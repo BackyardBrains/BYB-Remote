@@ -69,6 +69,26 @@
                 android:src="@drawable/board_connected"
                 android:visibility="invisible"/>
 
+            <!-- RoboRoach skin (Settings): the 1.x pictures. -->
+            <ImageView
+                android:id="@+id/imageRoach"
+                android:layout_width="120dp"
+                android:layout_height="306dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/description_roboroach"
+                android:src="@drawable/roach"
+                android:visibility="gone"/>
+
+            <ImageView
+                android:id="@+id/imageBackpack"
+                android:layout_width="127dp"
+                android:layout_height="172dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="20dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/backpack"
+                android:visibility="gone"/>
+
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/textGoLeft"
                 android:layout_width="wrap_content"
@@ -194,6 +214,19 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"/>
+            </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swRoboRoachSkin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:text="@string/label_roboroach_skin"
+                    android:textAppearance="?android:attr/textAppearanceSmall"/>
             </TableRow>
 
             <TableRow

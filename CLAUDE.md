@@ -12,10 +12,11 @@ needs them.
    stay green. Reference: `docs/PROTOCOL.md`.
 2. **The application ID stays `com.backyardbrains.bybremote`.** A different ID is a different
    Google Play app.
-3. **Brand is BYB Remote.** User-facing strings, artwork and the store listing present the app as
-   BYB Remote, the remote for the Backyard Brains signal generator, matching the iOS app.
-   Internal protocol names (for example `ROBOROACH_FREQUENCY` and the advertised device name)
-   stay as the firmware defines them.
+3. **The app is BYB Remote, matching the iOS app.** The default look is the board picture and
+   "Find Signal Generator". The classic RoboRoach skin (roach and backpack pictures, "Find
+   RoboRoach") is a switch in Settings, off by default and remembered between launches. Protocol
+   names (for example `ROBOROACH_FREQUENCY` and the advertised device name) stay as the firmware
+   defines them.
 4. **`targetSdk` meets Google Play's current requirement** (API 36 since 2026-08-31; Google raises
    it every August). Raising it is its own PR with emulator smoke screenshots checked.
 5. **One change = one PR. Surgical diffs.** No drive-by refactors, reformatting, or dependency

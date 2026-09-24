@@ -9,6 +9,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -53,6 +54,9 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
     private static final int SCREEN_MAIN = 0;
     private static final int SCREEN_SETTINGS = 1;
 
+    private static final String PREFS = "byb_remote";
+    private static final String PREF_ROBOROACH_SKIN = "roboroach_skin";
+
     boolean mScanning = false;
     boolean mTurning = false;
     boolean mOnSettingsScreen = false;
@@ -72,6 +76,11 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
 
     private GestureDetector gestureDetector;
     private OnBackPressedCallback mSettingsBackCallback;
+
+    /* the pictures for the current skin: always-on base, and the overlay that lights up when connected */
+    private boolean mRoboRoachSkin = false;
+    private ImageView mBaseImage;
+    private ImageView mConnectedImage;
 
     private final Runnable mConnectToNearest = new Runnable() {
         @Override public void run() {
@@ -131,8 +140,13 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         setSupportActionBar(viewHolder.toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayShowTitleEnabled(false);
 
-        viewHolder.boardImage.setVisibility(View.VISIBLE);
-        viewHolder.boardConnectedImage.setVisibility(View.INVISIBLE);
+        final SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        applySkin(prefs.getBoolean(PREF_ROBOROACH_SKIN, false));
+        viewHolder.RoboRoachSkin.setChecked(mRoboRoachSkin);
+        viewHolder.RoboRoachSkin.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(PREF_ROBOROACH_SKIN, isChecked).apply();
+            applySkin(isChecked);
+        });
         viewHolder.goLeftText.setVisibility(View.INVISIBLE);
         viewHolder.goRightText.setVisibility(View.INVISIBLE);
 
@@ -185,8 +199,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (mRemoteManager.isConnected()) {
                     mRemoteManager.updateRandomMode(isChecked);
-                    viewHolder.PulseWidth.setEnabled(!viewHolder.RandomMode.isChecked());
-                    viewHolder.Frequecy.setEnabled(!viewHolder.RandomMode.isChecked());
+                    updateSettingsEnabled();
                     viewHolder.configText.setText(mRemoteManager.getConfigurationString());
                 }
             }
@@ -224,12 +237,13 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         });
 
         viewHolder.configText.setText("");
+        updateSettingsEnabled();
 
         final Button button = findViewById(R.id.btnSaveSettings);
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 LOGD(TAG, "Updating signal generator settings");
-                mRemoteManager.updateFrequency(viewHolder.Frequecy.getProgress());
+                if (mRemoteManager.isConnected()) mRemoteManager.updateFrequency(viewHolder.Frequecy.getProgress());
 
                 // Perform action on click
                 showMainScreen();
@@ -289,6 +303,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
 
     @Override public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
+        menu.findItem(R.id.menu_scan).setTitle(mRoboRoachSkin ? R.string.menu_scan_roboroach : R.string.menu_scan);
         if (mRemoteManager.isConnected()) {
             menu.findItem(R.id.menu_stop).setVisible(false);
             menu.findItem(R.id.menu_scan).setVisible(false);
@@ -297,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             menu.findItem(R.id.menu_settings).setVisible(true);
         } else {
             menu.findItem(R.id.menu_disconnect).setVisible(false);
-            menu.findItem(R.id.menu_settings).setVisible(false);
+            menu.findItem(R.id.menu_settings).setVisible(true);
 
             if (mScanning) {
                 menu.findItem(R.id.menu_stop).setVisible(true);
@@ -339,8 +354,9 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         LOGD(TAG, "uiDeviceConnected()");
         runOnUiThread(new Runnable() {
             @Override public void run() {
-                viewHolder.boardConnectedImage.setImageAlpha(150);
-                viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
+                mConnectedImage.setImageAlpha(150);
+                mConnectedImage.setVisibility(View.VISIBLE);
+                updateSettingsEnabled();
                 invalidateOptionsMenu();
             }
         });
@@ -369,8 +385,8 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         runOnUiThread(new Runnable() {
             @Override public void run() {
                 viewHolder.configText.setText(mRemoteManager.getConfigurationString());
-                viewHolder.boardConnectedImage.setImageAlpha(255);
-                viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
+                mConnectedImage.setImageAlpha(255);
+                mConnectedImage.setVisibility(View.VISIBLE);
 
                 viewHolder.Frequecy.setProgress(mRemoteManager.getRemoteFrequency());
                 viewHolder.Gain.setProgress(mRemoteManager.getRemoteGain());
@@ -378,8 +394,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
                 viewHolder.Duration.setProgress(mRemoteManager.getRemoteDuration());
                 viewHolder.RandomMode.setChecked(mRemoteManager.getRemoteRandomMode());
 
-                viewHolder.PulseWidth.setEnabled(!viewHolder.RandomMode.isChecked());
-                viewHolder.Frequecy.setEnabled(!viewHolder.RandomMode.isChecked());
+                updateSettingsEnabled();
 
                 invalidateOptionsMenu();
             }
@@ -404,8 +419,8 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         if (mDeviceAddress != null) {
             LOGD(TAG, "connectToNearestBtDevice() ... Found a signal generator!");
 
-            viewHolder.boardConnectedImage.setImageAlpha(60);  //slowly builds up until connection
-            viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
+            mConnectedImage.setImageAlpha(60);  //slowly builds up until connection
+            mConnectedImage.setVisibility(View.VISIBLE);
 
             LOGD(TAG, "connectToNearestBtDevice() ... mDeviceAddress = " + mDeviceAddress);
 
@@ -485,8 +500,41 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
 
     private void showDisconnected() {
         viewHolder.configText.setText("");
-        viewHolder.boardConnectedImage.setVisibility(View.INVISIBLE);
+        mConnectedImage.setVisibility(View.INVISIBLE);
+        updateSettingsEnabled();
         showMainScreen();
+    }
+
+    /* the stimulation settings only make sense while connected; the skin switch always works */
+    private void updateSettingsEnabled() {
+        final boolean connected = mRemoteManager.isConnected();
+        final boolean random = viewHolder.RandomMode.isChecked();
+        viewHolder.Gain.setEnabled(connected);
+        viewHolder.Duration.setEnabled(connected);
+        viewHolder.RandomMode.setEnabled(connected);
+        viewHolder.Frequecy.setEnabled(connected && !random);
+        viewHolder.PulseWidth.setEnabled(connected && !random);
+    }
+
+    /* BYB Remote board (default) or the classic RoboRoach pictures; keeps the current connection look */
+    private void applySkin(boolean roboRoach) {
+        final ImageView oldOverlay = mConnectedImage;
+        mRoboRoachSkin = roboRoach;
+        mBaseImage = roboRoach ? viewHolder.roachImage : viewHolder.boardImage;
+        mConnectedImage = roboRoach ? viewHolder.backpackImage : viewHolder.boardConnectedImage;
+        final ImageView otherBase = roboRoach ? viewHolder.boardImage : viewHolder.roachImage;
+        final ImageView otherOverlay = roboRoach ? viewHolder.boardConnectedImage : viewHolder.backpackImage;
+
+        mBaseImage.setVisibility(View.VISIBLE);
+        otherBase.setVisibility(View.GONE);
+        if (oldOverlay != null && oldOverlay != mConnectedImage) {
+            mConnectedImage.setImageAlpha(oldOverlay.getImageAlpha());
+            mConnectedImage.setVisibility(oldOverlay.getVisibility());
+        } else if (oldOverlay == null) {
+            mConnectedImage.setVisibility(View.INVISIBLE);
+        }
+        otherOverlay.setVisibility(View.GONE);
+        invalidateOptionsMenu();
     }
 
     private void showSettingsScreen() {
@@ -591,12 +639,15 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         TextView configText;
         ImageView boardImage;
         ImageView boardConnectedImage;
+        ImageView roachImage;
+        ImageView backpackImage;
 
         SeekBar Frequecy;
         SeekBar Duration;
         SeekBar PulseWidth;
         SeekBar Gain;
         SwitchCompat RandomMode;
+        SwitchCompat RoboRoachSkin;
 
         // Binds UI elements to local variables
         void bind(@NonNull Activity activity) {
@@ -606,6 +657,8 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             flipper = activity.findViewById(R.id.viewFlipper);
             boardImage = activity.findViewById(R.id.imageBoard);
             boardConnectedImage = activity.findViewById(R.id.imageBoardConnected);
+            roachImage = activity.findViewById(R.id.imageRoach);
+            backpackImage = activity.findViewById(R.id.imageBackpack);
             goLeftText = activity.findViewById(R.id.textGoLeft);
             goRightText = activity.findViewById(R.id.textGoRight);
             configText = activity.findViewById(R.id.textConfig);
@@ -614,6 +667,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             Frequecy = activity.findViewById(R.id.sbFrequency);
             PulseWidth = activity.findViewById(R.id.sbPulseWidth);
             RandomMode = activity.findViewById(R.id.swRandomMode);
+            RoboRoachSkin = activity.findViewById(R.id.swRoboRoachSkin);
         }
     }
 

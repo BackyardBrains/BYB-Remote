@@ -2,7 +2,8 @@
 
 Bluetooth remote control for the Backyard Brains signal generator: find the nearest one, swipe
 left or right to send a pulse train, and set frequency, pulse width, duration, gain and random
-mode. Package `com.backyardbrains.bybremote`. It matches the iOS app of the same name
+mode. Settings has a **RoboRoach skin** switch for the classic roach-and-backpack look.
+Package `com.backyardbrains.bybremote`. It matches the iOS app of the same name
 ([App Store](https://apps.apple.com/us/app/byb-remote/id792968848)), whose source lives in
 [BackyardBrains/RoboRoach](https://github.com/BackyardBrains/RoboRoach) under `Software/iOS`.
 

@@ -19,6 +19,25 @@ shot() {
   adb exec-out screencap -p > "$OUT/$1.png"
 }
 
+# Tap the first on-screen element whose UI-dump node matches $1 (e.g. 'text="Settings"').
+tap_node() {
+  local node bounds
+  for _ in 1 2 3; do
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
+    node="$(adb shell cat /sdcard/ui.xml | tr '>' '\n' | grep -m1 -- "$1" || true)"
+    if [ -n "$node" ]; then
+      bounds="$(echo "$node" | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
+      set -- $bounds
+      if [ "$#" -ne 4 ]; then sleep 2; continue; fi
+      adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+      sleep 2
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
 adb install -r "$APK"
 adb logcat -c
 adb logcat -b crash -c || true
@@ -47,10 +66,18 @@ if ! adb shell pidof "$PKG" > /dev/null; then
   exit 1
 fi
 
-# 3. Landscape layout.
+# 3. Settings are reachable before connecting; turn on the RoboRoach skin and go back.
+tap_node 'text="Settings"' || { tap_node 'content-desc="More options"' && tap_node 'text="Settings"'; } \
+  || { echo "::error::Could not open Settings (API $sdk)"; exit 1; }
+shot 3-settings
+tap_node 'text="RoboRoach skin"' || { echo "::error::No RoboRoach skin switch in Settings (API $sdk)"; exit 1; }
+adb shell input keyevent KEYCODE_BACK
+shot 4-roboroach-skin
+
+# 5. Landscape layout (RoboRoach skin is still on: the choice is saved).
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
-shot 3-landscape
+shot 5-landscape
 adb shell settings put system user_rotation 0
 
 adb logcat -d > "$OUT/logcat.txt"
