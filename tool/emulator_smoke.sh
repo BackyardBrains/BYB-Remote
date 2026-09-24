@@ -28,6 +28,7 @@ tap_node() {
     if [ -n "$node" ]; then
       bounds="$(echo "$node" | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
       set -- $bounds
+      if [ "$#" -ne 4 ]; then sleep 2; continue; fi
       adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
       sleep 2
       return 0
