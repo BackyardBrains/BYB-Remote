@@ -1,4 +1,4 @@
-package com.backyardbrains.roboroach;
+package com.backyardbrains.bybremote;
 
 import android.Manifest;
 import android.app.Activity;
@@ -25,20 +25,20 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
-import com.backyardbrains.roboroach.utils.BluetoothUtils;
+import com.backyardbrains.bybremote.utils.BluetoothUtils;
 import java.util.List;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.AppSettingsDialog;
 import pub.devrel.easypermissions.EasyPermissions;
 
-import static com.backyardbrains.roboroach.utils.LogUtils.LOGD;
-import static com.backyardbrains.roboroach.utils.LogUtils.LOGE;
-import static com.backyardbrains.roboroach.utils.LogUtils.makeLogTag;
+import static com.backyardbrains.bybremote.utils.LogUtils.LOGD;
+import static com.backyardbrains.bybremote.utils.LogUtils.LOGE;
+import static com.backyardbrains.bybremote.utils.LogUtils.makeLogTag;
 
-public class RoboRoachActivity extends AppCompatActivity
-    implements RoboRoachManagerCallbacks, EasyPermissions.PermissionCallbacks {
+public class MainActivity extends AppCompatActivity
+    implements RemoteManagerCallbacks, EasyPermissions.PermissionCallbacks {
 
-    final static String TAG = makeLogTag(RoboRoachActivity.class);
+    final static String TAG = makeLogTag(MainActivity.class);
 
     private static final int REQUEST_CODE_ENABLE_BT = 120;
     private static final int REQUEST_CODE_SETTINGS_SCREEN = 121;
@@ -55,7 +55,7 @@ public class RoboRoachActivity extends AppCompatActivity
     String mDeviceAddress;
 
     Handler mHandler = new Handler();
-    RoboRoachManager mRoboRoachManager = null;
+    RemoteManager mRemoteManager = null;
     ViewHolder viewHolder;
     Runnable mGATTUpdate;
     int mGATTFreq = 0;
@@ -66,9 +66,9 @@ public class RoboRoachActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         LOGD(TAG, "onCreate()");
 
-        setContentView(R.layout.roboroach_main);
+        setContentView(R.layout.activity_main);
 
-        mRoboRoachManager = new RoboRoachManager(this, this);
+        mRemoteManager = new RemoteManager(this, this);
 
         // check if we have BT and BLE on board
         if (!BluetoothUtils.checkBleHardwareAvailable(this)) bleMissing();
@@ -98,21 +98,21 @@ public class RoboRoachActivity extends AppCompatActivity
                 if (mGATTFreq < 1) mGATTFreq = 1;
 
                 //If the new freq it's greater than 1/2 the
-                if ((float) mRoboRoachManager.getRoboRoachPulseWidth() > (float) 500 / mGATTFreq) {
+                if ((float) mRemoteManager.getRemotePulseWidth() > (float) 500 / mGATTFreq) {
                     mGATTUpdate = new Runnable() {
                         @Override public void run() {
                             float newFreq = (float) (1000 / mGATTFreq);
                             int newPW = (int) newFreq / 2;
-                            mRoboRoachManager.updatePulseWidth(newPW);
-                            viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                            mRemoteManager.updatePulseWidth(newPW);
+                            viewHolder.configText.setText(mRemoteManager.getConfigurationString());
                         }
                     };
                     mHandler.postDelayed(mGATTUpdate, 500);
                 }
 
                 viewHolder.PulseWidth.setMax(1000 / mGATTFreq);
-                mRoboRoachManager.updateFrequency(mGATTFreq);
-                viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                mRemoteManager.updateFrequency(mGATTFreq);
+                viewHolder.configText.setText(mRemoteManager.getConfigurationString());
             }
         });
         viewHolder.Gain.setMax(100);
@@ -125,18 +125,18 @@ public class RoboRoachActivity extends AppCompatActivity
 
             public void onStopTrackingTouch(SeekBar seekBar) {
                 float roundedGain = Math.round((float) seekBar.getProgress() / 5.0f) * 5.0f;
-                mRoboRoachManager.updateGain((int) roundedGain);
-                viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                mRemoteManager.updateGain((int) roundedGain);
+                viewHolder.configText.setText(mRemoteManager.getConfigurationString());
             }
         });
 
         viewHolder.RandomMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (mRoboRoachManager.isConnected()) {
-                    mRoboRoachManager.updateRandomMode(isChecked);
+                if (mRemoteManager.isConnected()) {
+                    mRemoteManager.updateRandomMode(isChecked);
                     viewHolder.PulseWidth.setEnabled(!viewHolder.RandomMode.isChecked());
                     viewHolder.Frequecy.setEnabled(!viewHolder.RandomMode.isChecked());
-                    viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                    viewHolder.configText.setText(mRemoteManager.getConfigurationString());
                 }
             }
         });
@@ -150,8 +150,8 @@ public class RoboRoachActivity extends AppCompatActivity
             }
 
             public void onStopTrackingTouch(SeekBar seekBar) {
-                mRoboRoachManager.updatePulseWidth(seekBar.getProgress());
-                viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                mRemoteManager.updatePulseWidth(seekBar.getProgress());
+                viewHolder.configText.setText(mRemoteManager.getConfigurationString());
             }
         });
 
@@ -167,8 +167,8 @@ public class RoboRoachActivity extends AppCompatActivity
                 float roundedDuration = Math.round((float) seekBar.getProgress() / 10.0f) * 10.0f;
                 //if ( roundedDuration < 10 ) roundedDuration = 10;
 
-                mRoboRoachManager.updateDuration((int) roundedDuration);
-                viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                mRemoteManager.updateDuration((int) roundedDuration);
+                viewHolder.configText.setText(mRemoteManager.getConfigurationString());
             }
         });
 
@@ -178,7 +178,7 @@ public class RoboRoachActivity extends AppCompatActivity
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 LOGD(TAG, "Updating RoboRoach Settings");
-                mRoboRoachManager.updateFrequency(viewHolder.Frequecy.getProgress());
+                mRemoteManager.updateFrequency(viewHolder.Frequecy.getProgress());
 
                 // Perform action on click
                 ViewFlipper vf = findViewById(R.id.viewFlipper);
@@ -205,8 +205,8 @@ public class RoboRoachActivity extends AppCompatActivity
             checkLocation();
         }
 
-        // if RoboRoachManager cannot be initialized we should leave
-        if (!mRoboRoachManager.initialize()) finish();
+        // if RemoteManager cannot be initialized we should leave
+        if (!mRemoteManager.initialize()) finish();
 
         invalidateOptionsMenu();
     }
@@ -215,12 +215,12 @@ public class RoboRoachActivity extends AppCompatActivity
         super.onPause();
         LOGD(TAG, "onPause()");
 
-        if (mRoboRoachManager.isConnected()) {
+        if (mRemoteManager.isConnected()) {
             runOnUiThread(new Runnable() {
                 @Override public void run() {
-                    mRoboRoachManager.stopMonitoringRssiValue();
-                    mRoboRoachManager.disconnect();
-                    mRoboRoachManager.close();
+                    mRemoteManager.stopMonitoringRssiValue();
+                    mRemoteManager.disconnect();
+                    mRemoteManager.close();
                     invalidateOptionsMenu();
                 }
             });
@@ -230,7 +230,7 @@ public class RoboRoachActivity extends AppCompatActivity
     }
 
     @Override protected void onDestroy() {
-        if (mRoboRoachManager != null) mRoboRoachManager.close();
+        if (mRemoteManager != null) mRemoteManager.close();
         super.onDestroy();
     }
 
@@ -252,7 +252,7 @@ public class RoboRoachActivity extends AppCompatActivity
 
     @Override public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
-        if (mRoboRoachManager.isConnected()) {
+        if (mRemoteManager.isConnected()) {
             menu.findItem(R.id.menu_stop).setVisible(false);
             menu.findItem(R.id.menu_scan).setVisible(false);
             menu.findItem(R.id.menu_refresh).setActionView(null);
@@ -346,21 +346,21 @@ public class RoboRoachActivity extends AppCompatActivity
     }
 
     @Override public void uiServicesFound() {
-        mRoboRoachManager.requestRoboRoachParameters();
+        mRemoteManager.requestRemoteParameters();
     }
 
-    @Override public void uiRoboRoachPropertiesUpdated() {
+    @Override public void uiRemotePropertiesUpdated() {
         runOnUiThread(new Runnable() {
             @Override public void run() {
-                viewHolder.configText.setText(mRoboRoachManager.getRoboRoachConfigurationString());
+                viewHolder.configText.setText(mRemoteManager.getConfigurationString());
                 viewHolder.backpackImage.setImageAlpha(255);
                 viewHolder.backpackImage.setVisibility(View.VISIBLE);
 
-                viewHolder.Frequecy.setProgress(mRoboRoachManager.getRoboRoachFrequency());
-                viewHolder.Gain.setProgress(mRoboRoachManager.getRoboRoachGain());
-                viewHolder.PulseWidth.setProgress(mRoboRoachManager.getRoboRoachPulseWidth());
-                viewHolder.Duration.setProgress(mRoboRoachManager.getRoboRoachDuration());
-                viewHolder.RandomMode.setChecked(mRoboRoachManager.getRoboRoachRandomMode());
+                viewHolder.Frequecy.setProgress(mRemoteManager.getRemoteFrequency());
+                viewHolder.Gain.setProgress(mRemoteManager.getRemoteGain());
+                viewHolder.PulseWidth.setProgress(mRemoteManager.getRemotePulseWidth());
+                viewHolder.Duration.setProgress(mRemoteManager.getRemoteDuration());
+                viewHolder.RandomMode.setChecked(mRemoteManager.getRemoteRandomMode());
 
                 viewHolder.PulseWidth.setEnabled(!viewHolder.RandomMode.isChecked());
                 viewHolder.Frequecy.setEnabled(!viewHolder.RandomMode.isChecked());
@@ -399,13 +399,13 @@ public class RoboRoachActivity extends AppCompatActivity
                     if (mScanning) {
                         mScanning = false;
                         invalidateOptionsMenu();
-                        mRoboRoachManager.stopScanning();
-                        LOGD(TAG, "connectToNearestBtDevice() ... mRoboRoachManager.stopScanning()");
+                        mRemoteManager.stopScanning();
+                        LOGD(TAG, "connectToNearestBtDevice() ... mRemoteManager.stopScanning()");
                     }
 
-                    LOGD(TAG, "connectToNearestBtDevice() ... about to call mRoboRoachManager.connect()");
-                    mRoboRoachManager.connect(mDeviceAddress);
-                    LOGD(TAG, "connectToNearestBtDevice() ... finished calling mRoboRoachManager.connect()");
+                    LOGD(TAG, "connectToNearestBtDevice() ... about to call mRemoteManager.connect()");
+                    mRemoteManager.connect(mDeviceAddress);
+                    LOGD(TAG, "connectToNearestBtDevice() ... finished calling mRemoteManager.connect()");
                 }
             });
         } else {
@@ -441,13 +441,13 @@ public class RoboRoachActivity extends AppCompatActivity
     //                if (mScanning) {
     //                    mScanning = false;
     //                    invalidateOptionsMenu();
-    //                    mRoboRoachManager.stopScanning();
-    //                    LOGD(TAG, "uiDeviceFound() ... mRoboRoachManager.stopScanning()");
+    //                    mRemoteManager.stopScanning();
+    //                    LOGD(TAG, "uiDeviceFound() ... mRemoteManager.stopScanning()");
     //                }
     //
-    //                LOGD(TAG, "uiDeviceFound() ... about to call mRoboRoachManager.connect()");
-    //                mRoboRoachManager.connect(mDeviceAddress);
-    //                LOGD(TAG, "uiDeviceFound() ... finished calling mRoboRoachManager.connect()");
+    //                LOGD(TAG, "uiDeviceFound() ... about to call mRemoteManager.connect()");
+    //                mRemoteManager.connect(mDeviceAddress);
+    //                LOGD(TAG, "uiDeviceFound() ... finished calling mRemoteManager.connect()");
     //            }
     //        });
     //    } else {
@@ -477,15 +477,15 @@ public class RoboRoachActivity extends AppCompatActivity
 
     void onLeftSwipe() {
         LOGD(TAG, "onLeftSwipe()");
-        if (mRoboRoachManager.isConnected() && !mOnSettingsScreen) {
-            if (!mTurning) mRoboRoachManager.turnLeft();
+        if (mRemoteManager.isConnected() && !mOnSettingsScreen) {
+            if (!mTurning) mRemoteManager.turnLeft();
         }
     }
 
     void onRightSwipe() {
         LOGD(TAG, "onRightSwipe()");
-        if (mRoboRoachManager.isConnected() && !mOnSettingsScreen) {
-            if (!mTurning) mRoboRoachManager.turnRight();
+        if (mRemoteManager.isConnected() && !mOnSettingsScreen) {
+            if (!mTurning) mRemoteManager.turnRight();
         }
     }
 
@@ -496,19 +496,19 @@ public class RoboRoachActivity extends AppCompatActivity
             }
         }, SCANNING_TIMEOUT);
         mScanning = true;
-        mRoboRoachManager.startScanning();
+        mRemoteManager.startScanning();
         invalidateOptionsMenu();
     }
 
     private void stopLeScan() {
         mScanning = false;
-        mRoboRoachManager.stopScanning();
+        mRemoteManager.stopScanning();
         invalidateOptionsMenu();
     }
 
     private void disconnect() {
-        mRoboRoachManager.disconnect();
-        //mRoboRoachManager.close();
+        mRemoteManager.disconnect();
+        //mRemoteManager.close();
         if (mOnSettingsScreen) {
             ViewFlipper vf = findViewById(R.id.viewFlipper);
             vf.showNext();

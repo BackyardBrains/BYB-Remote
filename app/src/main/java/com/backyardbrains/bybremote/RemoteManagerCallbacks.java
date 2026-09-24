@@ -1,9 +1,9 @@
-package com.backyardbrains.roboroach;
+package com.backyardbrains.bybremote;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 
-public interface RoboRoachManagerCallbacks {
+public interface RemoteManagerCallbacks {
 
     void uiDeviceFound(final BluetoothDevice device, int rssi, byte[] record);
 
@@ -13,7 +13,7 @@ public interface RoboRoachManagerCallbacks {
 
     void uiServicesFound();
 
-    void uiRoboRoachPropertiesUpdated();
+    void uiRemotePropertiesUpdated();
 
     void uiLeftTurnSentSuccessfully(final int stimulusDuration);
 
@@ -22,7 +22,7 @@ public interface RoboRoachManagerCallbacks {
     /**
      * Define Null Adapter class for that interface
      */
-    class Null implements RoboRoachManagerCallbacks {
+    class Null implements RemoteManagerCallbacks {
 
         @Override public void uiDeviceFound(BluetoothDevice device, int rssi, byte[] record) {
         }
@@ -36,7 +36,7 @@ public interface RoboRoachManagerCallbacks {
         @Override public void uiServicesFound() {
         }
 
-        @Override public void uiRoboRoachPropertiesUpdated() {
+        @Override public void uiRemotePropertiesUpdated() {
         }
 
         @Override public void uiLeftTurnSentSuccessfully(int stimulusDuration) {

@@ -1,4 +1,4 @@
-package com.backyardbrains.roboroach;
+package com.backyardbrains.bybremote;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -13,11 +13,11 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
-import com.backyardbrains.roboroach.utils.GattUtils;
+import com.backyardbrains.bybremote.utils.GattUtils;
 import java.util.List;
 import java.util.UUID;
 
-public class RoboRoachManager {
+public class RemoteManager {
 
     public static final UUID DEVICE_INFORMATION = new UUID((0x180AL << 32) | 0x1000, GattUtils.leastSigBits);
     public static final UUID BATTERY_SERVICE_1_1 = new UUID((0x180FL << 32) | 0x1000, GattUtils.leastSigBits);
@@ -39,15 +39,15 @@ public class RoboRoachManager {
     public static final UUID ROBOROACH_GAIN_MIN = new UUID((0xB2BCL << 32) | 0x1000, GattUtils.leastSigBits);
     public static final UUID ROBOROACH_GAIN_MAX = new UUID((0xB2BDL << 32) | 0x1000, GattUtils.leastSigBits);
 
-    private final static String TAG = RoboRoachManager.class.getSimpleName();
+    private final static String TAG = RemoteManager.class.getSimpleName();
 
     /* defines (in milliseconds) how often RSSI should be updated */
     private static final int RSSI_UPDATE_TIME_INTERVAL = 1500; // 1.5 seconds
 
     /* callback object through which we are returning results to the caller */
-    private RoboRoachManagerCallbacks mUiCallback = null;
+    private RemoteManagerCallbacks mUiCallback = null;
     /* define NULL object for UI callbacks */
-    private static final RoboRoachManagerCallbacks NULL_CALLBACK = new RoboRoachManagerCallbacks.Null();
+    private static final RemoteManagerCallbacks NULL_CALLBACK = new RemoteManagerCallbacks.Null();
 
     private Activity mParent = null;
     private boolean mConnected = false;
@@ -60,7 +60,7 @@ public class RoboRoachManager {
     private List<BluetoothGattService> mBluetoothGattServices = null;
 
     private BluetoothGattService mInfoService;
-    private BluetoothGattService mRoboRoachService;
+    private BluetoothGattService mRemoteService;
     private BluetoothGattService mBatteryService;
 
     private Handler mTimerHandler = new Handler();
@@ -74,7 +74,7 @@ public class RoboRoachManager {
     private static int rrBatteryLevel = 0;
 
     /* creates BleWrapper object, set its parent activity and callback object */
-    public RoboRoachManager(Activity parent, RoboRoachManagerCallbacks callback) {
+    public RemoteManager(Activity parent, RemoteManagerCallbacks callback) {
         this.mParent = parent;
         mUiCallback = callback;
         if (mUiCallback == null) mUiCallback = NULL_CALLBACK;
@@ -104,31 +104,31 @@ public class RoboRoachManager {
         return mConnected;
     }
 
-    public int getRoboRoachFrequency() {
+    public int getRemoteFrequency() {
         return rrFrequency;
     }
 
-    public int getRoboRoachGain() {
+    public int getRemoteGain() {
         return rrGain;
     }
 
-    public int getRoboRoachPulseWidth() {
+    public int getRemotePulseWidth() {
         return rrPulseWidth;
     }
 
-    public int getRoboRoachDuration() {
+    public int getRemoteDuration() {
         return rrDuration;
     }
 
-    public boolean getRoboRoachRandomMode() {
+    public boolean getRemoteRandomMode() {
         return rrRandomMode;
     }
 
-    public int getRoboRoachBatteryLevel() {
+    public int getRemoteBatteryLevel() {
         return rrBatteryLevel;
     }
 
-    public String getRoboRoachConfigurationString() {
+    public String getConfigurationString() {
         if (rrRandomMode) {
             return "Randomized Stimulus. " + rrGain + "%";
         } else {
@@ -136,18 +136,18 @@ public class RoboRoachManager {
         }
     }
 
-    public void requestRoboRoachParameters() {
-        if (mRoboRoachService == null) return;
+    public void requestRemoteParameters() {
+        if (mRemoteService == null) return;
 
-        requestCharacteristicValue(mRoboRoachService.getCharacteristic(ROBOROACH_FREQUENCY));
+        requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_FREQUENCY));
     }
 
     /* set new value for turn right */
     public void turnRight() {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRoboRoachService == null) return;
+        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRemoteService == null) return;
 
         final byte[] dataToWrite = new byte[] { (byte) 0x01 };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_STIMULATE_RIGHT);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_STIMULATE_RIGHT);
 
         // first set it locally....
         ch.setValue(dataToWrite);
@@ -157,10 +157,10 @@ public class RoboRoachManager {
 
     /* set new value for turn left */
     public void turnLeft() {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRoboRoachService == null) return;
+        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRemoteService == null) return;
 
         final byte[] dataToWrite = new byte[] { (byte) 0x01 };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_STIMULATE_LEFT);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_STIMULATE_LEFT);
 
         // first set it locally....
         ch.setValue(dataToWrite);
@@ -171,7 +171,7 @@ public class RoboRoachManager {
     public void updateGain(int gain) {
 
         final byte[] dataToWrite = new byte[] { (byte) gain };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_GAIN);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_GAIN);
         // first set it locally....
         ch.setValue(dataToWrite);
         // ... and then "commit" changes to the peripheral
@@ -182,7 +182,7 @@ public class RoboRoachManager {
     public void updateFrequency(int freq) {
 
         final byte[] dataToWrite = new byte[] { (byte) freq };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_FREQUENCY);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_FREQUENCY);
         ch.setValue(dataToWrite);
         mBluetoothGatt.writeCharacteristic(ch);
         rrFrequency = freq;
@@ -195,7 +195,7 @@ public class RoboRoachManager {
         } else {
             dataToWrite = new byte[] { (byte) 0x00 };
         }
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_RANDOM_MODE);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_RANDOM_MODE);
         ch.setValue(dataToWrite);
         mBluetoothGatt.writeCharacteristic(ch);
         rrRandomMode = randomMode;
@@ -204,7 +204,7 @@ public class RoboRoachManager {
     public void updateDuration(int dur) {
 
         final byte[] dataToWrite = new byte[] { (byte) (dur / 5) };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_DURATION_IN_5MS);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_DURATION_IN_5MS);
         // first set it locally....
         ch.setValue(dataToWrite);
         // ... and then "commit" changes to the peripheral
@@ -216,7 +216,7 @@ public class RoboRoachManager {
     public void updatePulseWidth(int pw) {
 
         final byte[] dataToWrite = new byte[] { (byte) pw };
-        final BluetoothGattCharacteristic ch = mRoboRoachService.getCharacteristic(ROBOROACH_PULSE_WIDTH);
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_PULSE_WIDTH);
         // first set it locally....
         ch.setValue(dataToWrite);
         // ... and then "commit" changes to the peripheral
@@ -342,11 +342,11 @@ public class RoboRoachManager {
         // keep reference to all services in local array:
         //if(mBluetoothGatt != null) mBluetoothGattServices = mBluetoothGatt.getServices();
 
-        mRoboRoachService = mBluetoothGatt.getService(BYB_ROBOROACH_SERVICE);
+        mRemoteService = mBluetoothGatt.getService(BYB_ROBOROACH_SERVICE);
         mBatteryService = mBluetoothGatt.getService(BATTERY_SERVICE_1_1);
         mInfoService = mBluetoothGatt.getService(DEVICE_INFORMATION);
 
-        if (mRoboRoachService != null) mRoboRoachService.getCharacteristics();
+        if (mRemoteService != null) mRemoteService.getCharacteristics();
         if (mBatteryService != null) mBatteryService.getCharacteristics();
         if (mInfoService != null) mInfoService.getCharacteristics();
 
@@ -524,22 +524,22 @@ public class RoboRoachManager {
 
                 //Hack.   Walk through the values.
                 if (characteristic.getUuid().equals(ROBOROACH_FREQUENCY)) {
-                    requestCharacteristicValue(mRoboRoachService.getCharacteristic(ROBOROACH_PULSE_WIDTH));
+                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_PULSE_WIDTH));
                 }
                 if (characteristic.getUuid().equals(ROBOROACH_PULSE_WIDTH)) {
-                    requestCharacteristicValue(mRoboRoachService.getCharacteristic(ROBOROACH_DURATION_IN_5MS));
+                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_DURATION_IN_5MS));
                 }
                 if (characteristic.getUuid().equals(ROBOROACH_DURATION_IN_5MS)) {
-                    requestCharacteristicValue(mRoboRoachService.getCharacteristic(ROBOROACH_RANDOM_MODE));
+                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_RANDOM_MODE));
                 }
                 if (characteristic.getUuid().equals(ROBOROACH_RANDOM_MODE)) {
-                    requestCharacteristicValue(mRoboRoachService.getCharacteristic(ROBOROACH_GAIN));
+                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_GAIN));
                 }
                 if (characteristic.getUuid().equals(ROBOROACH_GAIN)) {
                     requestCharacteristicValue(mBatteryService.getCharacteristic(BATTERY_LEVEL));
                 }
                 if (characteristic.getUuid().equals(BATTERY_LEVEL)) {
-                    mUiCallback.uiRoboRoachPropertiesUpdated();
+                    mUiCallback.uiRemotePropertiesUpdated();
                 }
             }
         }
