@@ -1,4 +1,4 @@
-# BYB Remote — Agent entry point
+# BYB Backpack — Agent entry point
 
 This file only points to the canonical sources:
 

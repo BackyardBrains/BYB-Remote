@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.backyardbrains.bybremote.utils;
+package com.backyardbrains.bybbackpack.utils;
 
 import android.util.Log;
 

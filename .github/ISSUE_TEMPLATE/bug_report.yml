@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a BYB Remote bug, crash, or a problem talking to the signal generator.
+description: Report a BYB Backpack bug, crash, or a problem talking to the signal generator.
 title: "[Bug]: "
 labels: ["bug", "needs-triage", "platform:android"]
 body:
@@ -18,7 +18,7 @@ body:
     id: version
     attributes:
       label: App version / build
-      description: Shown on the app's page in Settings > Apps > BYB Remote.
+      description: Shown on the app's page in Settings > Apps > BYB Backpack.
       placeholder: "Example: 2.0.0 (100042)"
     validations:
       required: false
@@ -33,7 +33,7 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open BYB Remote
+        1. Open BYB Backpack
         2. Tap Find Signal Generator
         3. See ...
     validations:

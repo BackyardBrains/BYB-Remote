@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BYB Remote</string>
+    <string name="app_name">BYB Backpack</string>
 
     <!-- Permissions -->
     <string name="action_setting">Settings</string>
     <string name="action_cancel">Cancel</string>
     <string name="title_permission_needed">Permission needed</string>
-    <string name="rationale_bluetooth">BYB Remote needs permission to find and control your signal generator over Bluetooth. You can allow it in Settings.</string>
+    <string name="rationale_bluetooth">BYB Backpack needs permission to find and control your signal generator over Bluetooth. You can allow it in Settings.</string>
     <string name="title_location_off">Turn on Location</string>
     <string name="message_location_off">On this version of Android, your phone only finds Bluetooth devices while Location is turned on.</string>
 
     <!-- Messages -->
-    <string name="message_ble_hardware_required">Bluetooth Low Energy is required for BYB Remote. Please try on another device.</string>
-    <string name="message_turn_on_bt">Sorry, your Bluetooth needs to be turned on for BYB Remote to work!</string>
+    <string name="message_ble_hardware_required">Bluetooth Low Energy is required for BYB Backpack. Please try on another device.</string>
+    <string name="message_turn_on_bt">Sorry, your Bluetooth needs to be turned on for BYB Backpack to work!</string>
 
     <!-- Menu items -->
     <string name="menu_disconnect">Disconnect</string>

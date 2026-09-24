@@ -1,10 +1,12 @@
-# BYB Remote for Android
+# BYB Backpack (Android)
 
-Bluetooth remote control for the Backyard Brains signal generator: find the nearest one, swipe
-left or right to send a pulse train, and set frequency, pulse width, duration, gain and random
-mode. Settings has a **RoboRoach skin** switch for the classic roach-and-backpack look.
-Package `com.backyardbrains.bybremote`. It matches the iOS app of the same name
-([App Store](https://apps.apple.com/us/app/byb-remote/id792968848)), whose source lives in
+BYB Backpack is the Bluetooth remote for the Backyard Brains RoboRoach backpack (a tiny signal
+generator): find the nearest one, swipe left or right to send a pulse train, and set frequency,
+pulse width, duration, gain and random mode. Settings has a **RoboRoach skin** switch for the
+classic roach-and-backpack look. Package `com.backyardbrains.bybbackpack`.
+
+The iOS counterpart is called BYB Remote
+([App Store](https://apps.apple.com/us/app/byb-remote/id792968848)); its source lives in
 [BackyardBrains/RoboRoach](https://github.com/BackyardBrains/RoboRoach) under `Software/iOS`.
 
 This repo started from the RoboRoach Android 1.2 source (2018, the first commit here) and was

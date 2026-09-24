@@ -20,5 +20,5 @@
 
 ## Invariants (CLAUDE.md)
 - [ ] Bluetooth protocol unchanged, or the matching firmware change is linked
-- [ ] Application ID is still `com.backyardbrains.bybremote`
+- [ ] Application ID is still `com.backyardbrains.bybbackpack`
 - [ ] No APK, AAB, keystore or other build output committed

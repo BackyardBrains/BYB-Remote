@@ -7,11 +7,11 @@ plugins {
 val releaseKeystore: String? = System.getenv("ANDROID_KEYSTORE_PATH")
 
 android {
-    namespace = "com.backyardbrains.bybremote"
+    namespace = "com.backyardbrains.bybbackpack"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.backyardbrains.bybremote"
+        applicationId = "com.backyardbrains.bybbackpack"
         minSdk = 23
         targetSdk = 36
         // CI release lanes pass -PversionCode=<100000 + run number>; local builds use 1.

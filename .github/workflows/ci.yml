@@ -57,7 +57,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: byb-remote-debug-apk
+          name: byb-backpack-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
           if-no-files-found: error
@@ -85,7 +85,7 @@ jobs:
       - name: Download debug APK
         uses: actions/download-artifact@v8
         with:
-          name: byb-remote-debug-apk
+          name: byb-backpack-debug-apk
 
       - name: Install, launch, screenshot
         uses: reactivecircus/android-emulator-runner@v2

@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: BYB Remote release process
-    url: https://github.com/BackyardBrains/BYB-Remote/blob/main/docs/RELEASING.md
+  - name: BYB Backpack release process
+    url: https://github.com/BackyardBrains/RoboRoach-Android-App/blob/main/docs/RELEASING.md
     about: How test builds and store releases are made.

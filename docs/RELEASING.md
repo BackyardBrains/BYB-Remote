@@ -1,4 +1,4 @@
-# Releasing BYB Remote
+# Releasing BYB Backpack
 
 Two kinds of build leave this repo. Both are GitHub Actions workflows that you start by hand from
 **main** (Actions tab → workflow → Run workflow).
@@ -17,7 +17,7 @@ in both lanes and every new commit gets a higher one.
 
 1. Run **Release - Android test APK (sideload)**. Fill in "For testers" with a plain-English line
    about what changed and what to try.
-2. The run publishes pre-release `test-<code>` with `BYB-Remote-<version>-<code>.apk` attached, and
+2. The run publishes pre-release `test-<code>` with `BYB-Backpack-<version>-<code>.apk` attached, and
    keeps a copy as a run artifact for 30 days.
 3. Testers download the APK on the phone and allow the install when asked. Builds signed with the
    same upload key install over each other.
@@ -63,14 +63,12 @@ another branch cannot read them:
 | `ANDROID_KEY_PASSWORD` | key password |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console service account with release rights for this app |
 
-About the signing key:
-
-- **If `com.backyardbrains.bybremote` already exists in Play Console** (the old BYB Remote
-  listing), its updates must be signed with the key Play knows. With Play App Signing, that is
-  the upload key registered there. Use that key, or ask Google for an upload-key reset from
-  Play Console. Without Play App Signing, it has to be the app's original signing key.
-- **If the app is new in Play Console**, create the app first and upload the first AAB by hand
-  (the Play API cannot create apps). Enroll in Play App Signing, then any new upload key works.
+About the signing key: BYB Backpack is a new app in Play Console (`com.backyardbrains.bybbackpack`).
+The old BYB Remote listing (`com.backyardbrains.bybremote`) is tied to a signing key we no longer
+have, so it is not used. Create the app in Play Console, upload the first AAB by hand (the Play API
+cannot create apps), and enroll in Play App Signing. After that, the upload key in these secrets is
+the one Play expects. Reusing SpikerBot's upload key is fine, since Play allows one upload key
+across several apps.
 
 Keep the keystore and passwords in the BYB password manager too. GitHub secrets cannot be read
 back.

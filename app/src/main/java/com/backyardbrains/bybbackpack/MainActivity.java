@@ -1,8 +1,8 @@
-package com.backyardbrains.bybremote;
+package com.backyardbrains.bybbackpack;
 
-import static com.backyardbrains.bybremote.utils.LogUtils.LOGD;
-import static com.backyardbrains.bybremote.utils.LogUtils.LOGE;
-import static com.backyardbrains.bybremote.utils.LogUtils.makeLogTag;
+import static com.backyardbrains.bybbackpack.utils.LogUtils.LOGD;
+import static com.backyardbrains.bybbackpack.utils.LogUtils.LOGE;
+import static com.backyardbrains.bybbackpack.utils.LogUtils.makeLogTag;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -43,7 +43,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import com.backyardbrains.bybremote.utils.BluetoothUtils;
+import com.backyardbrains.bybbackpack.utils.BluetoothUtils;
 
 public class MainActivity extends AppCompatActivity implements RemoteManagerCallbacks {
 
@@ -516,7 +516,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         viewHolder.PulseWidth.setEnabled(connected && !random);
     }
 
-    /* BYB Remote board (default) or the classic RoboRoach pictures; keeps the current connection look */
+    /* BYB Backpack board (default) or the classic RoboRoach pictures; keeps the current connection look */
     private void applySkin(boolean roboRoach) {
         final ImageView oldOverlay = mConnectedImage;
         mRoboRoachSkin = roboRoach;
