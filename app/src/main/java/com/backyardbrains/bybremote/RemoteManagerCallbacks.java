@@ -1,15 +1,15 @@
 package com.backyardbrains.bybremote;
 
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
 
 public interface RemoteManagerCallbacks {
 
-    void uiDeviceFound(final BluetoothDevice device, int rssi, byte[] record);
+    /** A signal generator answered the scan. Called only for devices that match the protocol name. */
+    void uiDeviceFound(final BluetoothDevice device, int rssi);
 
-    void uiDeviceConnected(final BluetoothGatt gatt, final BluetoothDevice device);
+    void uiDeviceConnected(final BluetoothDevice device);
 
-    void uiDeviceDisconnected(final BluetoothGatt gatt, final BluetoothDevice device);
+    void uiDeviceDisconnected(final BluetoothDevice device);
 
     void uiServicesFound();
 
@@ -24,13 +24,13 @@ public interface RemoteManagerCallbacks {
      */
     class Null implements RemoteManagerCallbacks {
 
-        @Override public void uiDeviceFound(BluetoothDevice device, int rssi, byte[] record) {
+        @Override public void uiDeviceFound(BluetoothDevice device, int rssi) {
         }
 
-        @Override public void uiDeviceConnected(BluetoothGatt gatt, BluetoothDevice device) {
+        @Override public void uiDeviceConnected(BluetoothDevice device) {
         }
 
-        @Override public void uiDeviceDisconnected(BluetoothGatt gatt, BluetoothDevice device) {
+        @Override public void uiDeviceDisconnected(BluetoothDevice device) {
         }
 
         @Override public void uiServicesFound() {

@@ -1,48 +1,49 @@
 package com.backyardbrains.bybremote;
 
+import static com.backyardbrains.bybremote.RemoteProtocol.BATTERY_LEVEL;
+import static com.backyardbrains.bybremote.RemoteProtocol.BATTERY_SERVICE;
+import static com.backyardbrains.bybremote.RemoteProtocol.BYB_ROBOROACH_SERVICE;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_DURATION_IN_5MS;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_FREQUENCY;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_GAIN;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_PULSE_WIDTH;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_RANDOM_MODE;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_STIMULATE_LEFT;
+import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_STIMULATE_RIGHT;
+
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothStatusCodes;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.os.Handler;
+import android.os.Build;
 import android.util.Log;
-import com.backyardbrains.bybremote.utils.GattUtils;
-import java.util.List;
+import androidx.annotation.NonNull;
+import com.backyardbrains.bybremote.utils.BluetoothUtils;
 import java.util.UUID;
 
+/**
+ * Talks to the signal generator over Bluetooth LE.
+ *
+ * <p>MainActivity only calls in here once {@link BluetoothUtils#hasPermissions(Context)} is true, and the scan and
+ * connect entry points re-check it, which is why the Bluetooth permission lint check is suppressed for the class.
+ */
+@SuppressLint("MissingPermission")
 public class RemoteManager {
 
-    public static final UUID DEVICE_INFORMATION = new UUID((0x180AL << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID BATTERY_SERVICE_1_1 = new UUID((0x180FL << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID BATTERY_LEVEL = new UUID((0x2A19L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID FIRMWARE_REVISION_STRING = new UUID((0x2A26L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID HARDWARE_REVISION_STRING = new UUID((0x2A27L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID BYB_ROBOROACH_SERVICE = new UUID((0xB2B0L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_FREQUENCY = new UUID((0xB2B1L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_PULSE_WIDTH = new UUID((0xB2B2L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_DURATION_IN_5MS = new UUID((0xB2B3L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_RANDOM_MODE = new UUID((0xB2B4L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_STIMULATE_LEFT = new UUID((0xB2B5L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_STIMULATE_RIGHT = new UUID((0xB2B6L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_GAIN = new UUID((0xB2B7L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_FREQ_MIN = new UUID((0xB2B8L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_FREQ_MAX = new UUID((0xB2B9L << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_PW_MIN = new UUID((0xB2BAL << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_PW_MAX = new UUID((0xB2BBL << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_GAIN_MIN = new UUID((0xB2BCL << 32) | 0x1000, GattUtils.leastSigBits);
-    public static final UUID ROBOROACH_GAIN_MAX = new UUID((0xB2BDL << 32) | 0x1000, GattUtils.leastSigBits);
-
     private final static String TAG = RemoteManager.class.getSimpleName();
-
-    /* defines (in milliseconds) how often RSSI should be updated */
-    private static final int RSSI_UPDATE_TIME_INTERVAL = 1500; // 1.5 seconds
 
     /* callback object through which we are returning results to the caller */
     private RemoteManagerCallbacks mUiCallback = null;
@@ -56,48 +57,22 @@ public class RemoteManager {
     private BluetoothAdapter mBluetoothAdapter = null;
     private BluetoothDevice mBluetoothDevice = null;
     private BluetoothGatt mBluetoothGatt = null;
-    private BluetoothGattService mBluetoothSelectedService = null;
-    private List<BluetoothGattService> mBluetoothGattServices = null;
 
-    private BluetoothGattService mInfoService;
     private BluetoothGattService mRemoteService;
     private BluetoothGattService mBatteryService;
 
-    private Handler mTimerHandler = new Handler();
-    private boolean mTimerEnabled = false;
-
-    private static int rrFrequency;
-    private static int rrPulseWidth;
-    private static int rrDuration;
-    private static int rrGain;
-    private static boolean rrRandomMode = false;
-    private static int rrBatteryLevel = 0;
+    private int rrFrequency;
+    private int rrPulseWidth;
+    private int rrDuration;
+    private int rrGain;
+    private boolean rrRandomMode = false;
+    private int rrBatteryLevel = 0;
 
     /* creates BleWrapper object, set its parent activity and callback object */
     public RemoteManager(Activity parent, RemoteManagerCallbacks callback) {
         this.mParent = parent;
         mUiCallback = callback;
         if (mUiCallback == null) mUiCallback = NULL_CALLBACK;
-    }
-
-    public BluetoothAdapter getAdapter() {
-        return mBluetoothAdapter;
-    }
-
-    public BluetoothDevice getDevice() {
-        return mBluetoothDevice;
-    }
-
-    public BluetoothGatt getGatt() {
-        return mBluetoothGatt;
-    }
-
-    public BluetoothGattService getCachedService() {
-        return mBluetoothSelectedService;
-    }
-
-    public List<BluetoothGattService> getCachedServices() {
-        return mBluetoothGattServices;
     }
 
     public boolean isConnected() {
@@ -129,11 +104,7 @@ public class RemoteManager {
     }
 
     public String getConfigurationString() {
-        if (rrRandomMode) {
-            return "Randomized Stimulus. " + rrGain + "%";
-        } else {
-            return rrFrequency + "Hz, " + rrPulseWidth + "ms Pulse, for " + rrDuration + "ms. " + rrGain + "%";
-        }
+        return RemoteProtocol.configurationString(rrRandomMode, rrFrequency, rrPulseWidth, rrDuration, rrGain);
     }
 
     public void requestRemoteParameters() {
@@ -144,97 +115,61 @@ public class RemoteManager {
 
     /* set new value for turn right */
     public void turnRight() {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRemoteService == null) return;
-
-        final byte[] dataToWrite = new byte[] { (byte) 0x01 };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_STIMULATE_RIGHT);
-
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
+        writeSetting(ROBOROACH_STIMULATE_RIGHT, new byte[] { (byte) 0x01 });
     }
 
     /* set new value for turn left */
     public void turnLeft() {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRemoteService == null) return;
-
-        final byte[] dataToWrite = new byte[] { (byte) 0x01 };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_STIMULATE_LEFT);
-
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
+        writeSetting(ROBOROACH_STIMULATE_LEFT, new byte[] { (byte) 0x01 });
     }
 
     public void updateGain(int gain) {
-
-        final byte[] dataToWrite = new byte[] { (byte) gain };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_GAIN);
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
+        writeSetting(ROBOROACH_GAIN, RemoteProtocol.uint8(gain));
         rrGain = gain;
     }
 
     public void updateFrequency(int freq) {
-
-        final byte[] dataToWrite = new byte[] { (byte) freq };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_FREQUENCY);
-        ch.setValue(dataToWrite);
-        mBluetoothGatt.writeCharacteristic(ch);
+        writeSetting(ROBOROACH_FREQUENCY, RemoteProtocol.uint8(freq));
         rrFrequency = freq;
     }
 
     public void updateRandomMode(boolean randomMode) {
-        final byte[] dataToWrite;
-        if (randomMode) {
-            dataToWrite = new byte[] { (byte) 0x01 };
-        } else {
-            dataToWrite = new byte[] { (byte) 0x00 };
-        }
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_RANDOM_MODE);
-        ch.setValue(dataToWrite);
-        mBluetoothGatt.writeCharacteristic(ch);
+        writeSetting(ROBOROACH_RANDOM_MODE, RemoteProtocol.uint8(randomMode ? 1 : 0));
         rrRandomMode = randomMode;
     }
 
     public void updateDuration(int dur) {
-
-        final byte[] dataToWrite = new byte[] { (byte) (dur / 5) };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_DURATION_IN_5MS);
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
-
+        writeSetting(ROBOROACH_DURATION_IN_5MS, RemoteProtocol.durationToWire(dur));
         rrDuration = dur;
     }
 
     public void updatePulseWidth(int pw) {
-
-        final byte[] dataToWrite = new byte[] { (byte) pw };
-        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(ROBOROACH_PULSE_WIDTH);
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
-
+        writeSetting(ROBOROACH_PULSE_WIDTH, RemoteProtocol.uint8(pw));
         rrPulseWidth = pw;
     }
 
     /* start scanning for BT LE devices around */
     public void startScanning() {
         Log.d(TAG, "startScanning()");
-        mBluetoothAdapter.startLeScan(mDeviceFoundCallback);
+        final BluetoothLeScanner scanner = getScanner();
+        if (scanner == null) return;
+
+        final ScanSettings settings =
+            new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+        scanner.startScan(null, settings, mScanCallback);
     }
 
     /* stops current scanning */
     public void stopScanning() {
         Log.d(TAG, "stopScanning()");
-        mBluetoothAdapter.stopLeScan(mDeviceFoundCallback);
+        final BluetoothLeScanner scanner = getScanner();
+        if (scanner != null) scanner.stopScan(mScanCallback);
+    }
+
+    private BluetoothLeScanner getScanner() {
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) return null;
+        if (!BluetoothUtils.hasPermissions(mParent)) return null;
+        return mBluetoothAdapter.getBluetoothLeScanner();
     }
 
     /**
@@ -255,6 +190,7 @@ public class RemoteManager {
     /* connect to the device with specified address */
     public boolean connect(final String deviceAddress) {
         if (mBluetoothAdapter == null || deviceAddress == null) return false;
+        if (!BluetoothUtils.hasPermissions(mParent)) return false;
         mDeviceAddress = deviceAddress;
 
         Log.d(TAG, "connect()");
@@ -267,12 +203,8 @@ public class RemoteManager {
             // connect from scratch
             // get BluetoothDevice object for specified address
             mBluetoothDevice = mBluetoothAdapter.getRemoteDevice(mDeviceAddress);
-            if (mBluetoothDevice == null) {
-                // we got wrong address - that device is not available!
-                return false;
-            }
-            // connect with remote device
-            mBluetoothGatt = mBluetoothDevice.connectGatt(mParent, false, mBleCallback);
+            // connect over LE explicitly; dual-mode phones otherwise sometimes try classic Bluetooth and fail
+            mBluetoothGatt = mBluetoothDevice.connectGatt(mParent, false, mBleCallback, BluetoothDevice.TRANSPORT_LE);
         }
         if (mBluetoothGatt == null) Log.e(TAG, "mBluetoothGatt is null!");
         return true;
@@ -290,40 +222,7 @@ public class RemoteManager {
         Log.d(TAG, "close()");
         if (mBluetoothGatt != null) mBluetoothGatt.close();
         mBluetoothGatt = null;
-    }
-
-    /* request new RSSi value for the connection*/
-    public void readPeriodicalyRssiValue(final boolean repeat) {
-        mTimerEnabled = repeat;
-        // check if we should stop checking RSSI value
-        if (!mConnected || mBluetoothGatt == null || mTimerEnabled == false) {
-            mTimerEnabled = false;
-            return;
-        }
-
-        mTimerHandler.postDelayed(new Runnable() {
-            @Override public void run() {
-                if (mBluetoothGatt == null || mBluetoothAdapter == null || mConnected == false) {
-                    mTimerEnabled = false;
-                    return;
-                }
-
-                // request RSSI value
-                mBluetoothGatt.readRemoteRssi();
-                // add call it once more in the future
-                readPeriodicalyRssiValue(mTimerEnabled);
-            }
-        }, RSSI_UPDATE_TIME_INTERVAL);
-    }
-
-    /* starts monitoring RSSI value */
-    public void startMonitoringRssiValue() {
-        readPeriodicalyRssiValue(true);
-    }
-
-    /* stops monitoring of RSSI value */
-    public void stopMonitoringRssiValue() {
-        readPeriodicalyRssiValue(false);
+        mConnected = false;
     }
 
     /* request to discover all services available on the remote devices
@@ -337,36 +236,17 @@ public class RemoteManager {
      * before calling getServices() make sure service discovery is finished! */
     public void getSupportedServices() {
         Log.d(TAG, "getSupportedServices()");
-
-        if (mBluetoothGattServices != null && mBluetoothGattServices.size() > 0) mBluetoothGattServices.clear();
-        // keep reference to all services in local array:
-        //if(mBluetoothGatt != null) mBluetoothGattServices = mBluetoothGatt.getServices();
+        if (mBluetoothGatt == null) return;
 
         mRemoteService = mBluetoothGatt.getService(BYB_ROBOROACH_SERVICE);
-        mBatteryService = mBluetoothGatt.getService(BATTERY_SERVICE_1_1);
-        mInfoService = mBluetoothGatt.getService(DEVICE_INFORMATION);
-
-        if (mRemoteService != null) mRemoteService.getCharacteristics();
-        if (mBatteryService != null) mBatteryService.getCharacteristics();
-        if (mInfoService != null) mInfoService.getCharacteristics();
+        mBatteryService = mBluetoothGatt.getService(BATTERY_SERVICE);
 
         mUiCallback.uiServicesFound();
     }
 
-    /* get all characteristic for particular service and pass them to the UI callback */
-    public void getCharacteristicsForService(final BluetoothGattService service) {
-        if (service == null) return;
-        List<BluetoothGattCharacteristic> chars = null;
-
-        chars = service.getCharacteristics();
-        //mUiCallback.uiCharacteristicForService(mBluetoothGatt, mBluetoothDevice, service, chars);
-        // keep reference to the last selected service
-        mBluetoothSelectedService = service;
-    }
-
     /* request to fetch newest value stored on the remote device for particular characteristic */
     public void requestCharacteristicValue(BluetoothGattCharacteristic ch) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null) return;
+        if (mBluetoothAdapter == null || mBluetoothGatt == null || ch == null) return;
 
         mBluetoothGatt.readCharacteristic(ch);
 
@@ -374,110 +254,84 @@ public class RemoteManager {
         // new value available will be notified in Callback Object
     }
 
-    /* get characteristic's value (and parse it for some types of characteristics)
-     * before calling this You should always update the value by calling requestCharacteristicValue() */
-    public void getCharacteristicValue(BluetoothGattCharacteristic ch) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || ch == null) return;
+    /* store a value the peripheral sent us (read response or notification) */
+    private void onCharacteristicValue(BluetoothGattCharacteristic ch, byte[] value) {
+        final int v = RemoteProtocol.readUint8(value);
+        if (ch == null || v < 0) return;
 
-        if (ch.getUuid().equals(ROBOROACH_FREQUENCY)) {
-            rrFrequency = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-        }
-        if (ch.getUuid().equals(ROBOROACH_PULSE_WIDTH)) {
-            rrPulseWidth = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-        }
-        if (ch.getUuid().equals(ROBOROACH_DURATION_IN_5MS)) {
-            rrDuration = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) * 5;
-        }
-        if (ch.getUuid().equals(ROBOROACH_GAIN)) rrGain = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-        if (ch.getUuid().equals(ROBOROACH_RANDOM_MODE)) {
-            rrRandomMode = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) == 1;
-        }
-        if (ch.getUuid().equals(BATTERY_LEVEL)) {
-            rrBatteryLevel = ch.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-        }
+        final UUID uuid = ch.getUuid();
+        if (uuid.equals(ROBOROACH_FREQUENCY)) rrFrequency = v;
+        if (uuid.equals(ROBOROACH_PULSE_WIDTH)) rrPulseWidth = v;
+        if (uuid.equals(ROBOROACH_DURATION_IN_5MS)) rrDuration = RemoteProtocol.durationFromWire(v);
+        if (uuid.equals(ROBOROACH_GAIN)) rrGain = v;
+        if (uuid.equals(ROBOROACH_RANDOM_MODE)) rrRandomMode = v == 1;
+        if (uuid.equals(BATTERY_LEVEL)) rrBatteryLevel = v;
 
         Log.d(TAG, "F=[" + rrFrequency + "]PW=[" + rrPulseWidth + "]");
-
-        //mUiCallback.uiNewValueForCharacteristic(mBluetoothGatt,
-        //        mBluetoothDevice,
-        //        mBluetoothSelectedService,
-        //        ch,
-        //        strValue,
-        //        intValue,
-        //       rawValue,
-        //        timestamp);
     }
 
-    /* reads and return what what FORMAT is indicated by characteristic's properties
-     * seems that value makes no sense in most cases */
-    public int getValueFormat(BluetoothGattCharacteristic ch) {
-        int properties = ch.getProperties();
+    /* write one setting to the signal generator */
+    @SuppressWarnings("deprecation")
+    private void writeSetting(UUID uuid, byte[] dataToWrite) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null || mRemoteService == null) return;
+        final BluetoothGattCharacteristic ch = mRemoteService.getCharacteristic(uuid);
+        if (ch == null) return;
 
-        if ((BluetoothGattCharacteristic.FORMAT_FLOAT & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_FLOAT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            final int result =
+                mBluetoothGatt.writeCharacteristic(ch, dataToWrite, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            if (result != BluetoothStatusCodes.SUCCESS) Log.e(TAG, "writeCharacteristic failed: " + result);
+        } else {
+            // first set it locally....
+            ch.setValue(dataToWrite);
+            // ... and then "commit" changes to the peripheral
+            mBluetoothGatt.writeCharacteristic(ch);
         }
-        if ((BluetoothGattCharacteristic.FORMAT_SFLOAT & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_SFLOAT;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_SINT16 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_SINT16;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_SINT32 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_SINT32;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_SINT8 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_SINT8;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_UINT16 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_UINT16;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_UINT32 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_UINT32;
-        }
-        if ((BluetoothGattCharacteristic.FORMAT_UINT8 & properties) != 0) {
-            return BluetoothGattCharacteristic.FORMAT_UINT8;
-        }
-
-        return 0;
     }
 
-    /* set new value for particular characteristic */
-    public void writeDataToCharacteristic(final BluetoothGattCharacteristic ch, final byte[] dataToWrite) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null || ch == null) return;
+    /* reads the settings one after another; Android allows only one outstanding GATT request */
+    private void onReadComplete(BluetoothGattCharacteristic characteristic) {
+        if (mRemoteService == null) return;
 
-        // first set it locally....
-        ch.setValue(dataToWrite);
-        // ... and then "commit" changes to the peripheral
-        mBluetoothGatt.writeCharacteristic(ch);
-    }
-
-    /* enables/disables notification for characteristic */
-    public void setNotificationForCharacteristic(BluetoothGattCharacteristic ch, boolean enabled) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null) return;
-
-        boolean success = mBluetoothGatt.setCharacteristicNotification(ch, enabled);
-        if (!success) {
-            Log.e("------", "Seting proper notification status for characteristic failed!");
-        }
-
-        Log.d(TAG, ch.toString());
-
-        // This is also sometimes required (e.g. for heart rate monitors) to enable notifications/indications
-        // see: https://developer.bluetooth.org/gatt/descriptors/Pages/DescriptorViewer.aspx?u=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
-        BluetoothGattDescriptor descriptor = ch.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
-        if (descriptor != null) {
-            byte[] val = enabled ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
-            descriptor.setValue(val);
-            mBluetoothGatt.writeDescriptor(descriptor);
+        final UUID uuid = characteristic.getUuid();
+        if (uuid.equals(ROBOROACH_FREQUENCY)) {
+            requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_PULSE_WIDTH));
+        } else if (uuid.equals(ROBOROACH_PULSE_WIDTH)) {
+            requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_DURATION_IN_5MS));
+        } else if (uuid.equals(ROBOROACH_DURATION_IN_5MS)) {
+            requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_RANDOM_MODE));
+        } else if (uuid.equals(ROBOROACH_RANDOM_MODE)) {
+            requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_GAIN));
+        } else if (uuid.equals(ROBOROACH_GAIN)) {
+            final BluetoothGattCharacteristic battery =
+                mBatteryService == null ? null : mBatteryService.getCharacteristic(BATTERY_LEVEL);
+            if (battery != null) {
+                requestCharacteristicValue(battery);
+            } else {
+                mUiCallback.uiRemotePropertiesUpdated();
+            }
+        } else if (uuid.equals(BATTERY_LEVEL)) {
+            mUiCallback.uiRemotePropertiesUpdated();
         }
     }
 
     /* defines callback for scanning results */
-    private BluetoothAdapter.LeScanCallback mDeviceFoundCallback = new BluetoothAdapter.LeScanCallback() {
-        @Override public void onLeScan(final BluetoothDevice device, final int rssi, final byte[] scanRecord) {
-            //Log.d(TAG, "mDeviceFoundCallback()");
-            mUiCallback.uiDeviceFound(device, rssi, scanRecord);
+    private final ScanCallback mScanCallback = new ScanCallback() {
+        @Override public void onScanResult(int callbackType, ScanResult result) {
+            final BluetoothDevice device = result.getDevice();
+            if (device == null || device.getAddress() == null) return;
+
+            // Prefer the name in the advertisement; the cached device name can be empty the first time we see it.
+            final ScanRecord record = result.getScanRecord();
+            String name = record != null ? record.getDeviceName() : null;
+            if (name == null) name = device.getName();
+            if (!RemoteProtocol.isRemoteName(name)) return;
+
+            mUiCallback.uiDeviceFound(device, result.getRssi());
+        }
+
+        @Override public void onScanFailed(int errorCode) {
+            Log.e(TAG, "onScanFailed(" + errorCode + ")");
         }
     };
 
@@ -487,22 +341,15 @@ public class RemoteManager {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
 
                 mConnected = true;
-                mUiCallback.uiDeviceConnected(mBluetoothGatt, mBluetoothDevice);
-
-                // now we can start talking with the device, e.g.
-                mBluetoothGatt.readRemoteRssi();
-                // response will be delivered to callback object!
+                mUiCallback.uiDeviceConnected(mBluetoothDevice);
 
                 // in our case we would also like automatically to call for services discovery
                 startServicesDiscovery();
 
                 Log.d(TAG, "onConnectionStateChange()");
-                Log.d(TAG, BYB_ROBOROACH_SERVICE.toString());
-                // and we also want to get RSSI value to be updated periodically
-                //startMonitoringRssiValue();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 mConnected = false;
-                mUiCallback.uiDeviceDisconnected(mBluetoothGatt, mBluetoothDevice);
+                mUiCallback.uiDeviceDisconnected(mBluetoothDevice);
             }
         }
 
@@ -513,44 +360,34 @@ public class RemoteManager {
             }
         }
 
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        // Android 13+ delivers the value with the callback.
+        @Override public void onCharacteristicRead(@NonNull BluetoothGatt gatt,
+            @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {
             Log.d(TAG, "onCharacteristicRead()");
-
             // we got response regarding our request to fetch characteristic value
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                // and it success, so we can get the value
-                getCharacteristicValue(characteristic);
-
-                //Hack.   Walk through the values.
-                if (characteristic.getUuid().equals(ROBOROACH_FREQUENCY)) {
-                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_PULSE_WIDTH));
-                }
-                if (characteristic.getUuid().equals(ROBOROACH_PULSE_WIDTH)) {
-                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_DURATION_IN_5MS));
-                }
-                if (characteristic.getUuid().equals(ROBOROACH_DURATION_IN_5MS)) {
-                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_RANDOM_MODE));
-                }
-                if (characteristic.getUuid().equals(ROBOROACH_RANDOM_MODE)) {
-                    requestCharacteristicValue(mRemoteService.getCharacteristic(ROBOROACH_GAIN));
-                }
-                if (characteristic.getUuid().equals(ROBOROACH_GAIN)) {
-                    requestCharacteristicValue(mBatteryService.getCharacteristic(BATTERY_LEVEL));
-                }
-                if (characteristic.getUuid().equals(BATTERY_LEVEL)) {
-                    mUiCallback.uiRemotePropertiesUpdated();
-                }
+                onCharacteristicValue(characteristic, value);
+                onReadComplete(characteristic);
             }
         }
 
-        @Override public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+        // Android 12 and older.
+        @SuppressWarnings("deprecation")
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            onCharacteristicRead(gatt, characteristic, characteristic.getValue(), status);
+        }
+
+        @Override public void onCharacteristicChanged(@NonNull BluetoothGatt gatt,
+            @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value) {
             Log.d(TAG, "onCharacteristicChanged()");
             // characteristic's value was updated due to enabled notification, lets get this value
-            // the value itself will be reported to the UI inside getCharacteristicValue
-            getCharacteristicValue(characteristic);
-            // also, notify UI that notification are enabled for particular characteristic
-            //mUiCallback.uiGotNotification(mBluetoothGatt, mBluetoothDevice, mBluetoothSelectedService, characteristic);
+            onCharacteristicValue(characteristic, value);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            onCharacteristicChanged(gatt, characteristic, characteristic.getValue());
         }
 
         @Override
@@ -565,13 +402,6 @@ public class RemoteManager {
                 if (characteristic.getUuid().equals(ROBOROACH_STIMULATE_RIGHT)) {
                     mUiCallback.uiRightTurnSentSuccessfully(rrDuration);
                 }
-            }
-        }
-
-        @Override public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                // we got new value of RSSI of the connection, pass it to the UI
-                //mUiCallback.uiNewRssiAvailable(mBluetoothGatt, mBluetoothDevice, rssi);
             }
         }
     };

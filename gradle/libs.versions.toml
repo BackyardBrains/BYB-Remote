@@ -1,0 +1,15 @@
+[versions]
+agp = "9.4.1"
+activity = "1.13.0"
+appcompat = "1.8.0"
+core = "1.19.1"
+junit = "4.13.2"
+
+[libraries]
+androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+androidx-core = { module = "androidx.core:core", version.ref = "core" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }

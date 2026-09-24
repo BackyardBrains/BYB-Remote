@@ -1,43 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RoboRoach</string>
+    <string name="app_name">BYB Remote</string>
 
     <!-- Permissions -->
     <string name="action_setting">Settings</string>
     <string name="action_cancel">Cancel</string>
-    <string name="rationale_access_coarse_location">This app needs to have your coarse location to be able to locate RoboRoach.</string>
-
-    <string name="ble_not_supported">BLE is not supported</string>
-    <string name="label_data">Data:</string>
-    <string name="label_device_address">Device address:</string>
-    <string name="label_state">State:</string>
-    <string name="no_data">No data</string>
-    <string name="connected">Connected</string>
-    <string name="disconnected">Disconnected</string>
-    <string name="title_devices">RoboRoach</string>
-    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
-    <string name="unknown_device">Unknown device</string>
-    <string name="unknown_characteristic">Unknown characteristic</string>
-    <string name="unknown_service">Unknown service</string>
+    <string name="title_permission_needed">Permission needed</string>
+    <string name="rationale_bluetooth">BYB Remote needs permission to find and control your signal generator over Bluetooth. You can allow it in Settings.</string>
+    <string name="title_location_off">Turn on Location</string>
+    <string name="message_location_off">On this version of Android, your phone only finds Bluetooth devices while Location is turned on.</string>
 
     <!-- Messages -->
-    <string name="message_ble_hardware_required">BLE Hardware is required for your RoboRoach. Please try on another device.</string>
-    <string name="message_turn_on_bt">Sorry, Your bluetooth needs to be turned ON for your RoboRoach to work!</string>
-
-    <!-- RoboRoach items -->
-    <string name="connect_roboroach">Connect to RoboRoach</string>
+    <string name="message_ble_hardware_required">Bluetooth Low Energy is required for BYB Remote. Please try on another device.</string>
+    <string name="message_turn_on_bt">Sorry, your Bluetooth needs to be turned on for BYB Remote to work!</string>
 
     <!-- Menu items -->
-    <string name="menu_connect">Connect</string>
     <string name="menu_disconnect">Disconnect</string>
-    <string name="menu_scan">Find RoboRoach</string>
+    <string name="menu_scan">Find Signal Generator</string>
     <string name="menu_stop">Stop</string>
-    <string name="menu_stimulation">Stimulate</string>
     <string name="menu_settings">Settings</string>
-    <string name="title_activity_robo_roach_main">RoboRoach</string>
-    <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
+
+    <!-- Main screen -->
+    <string name="description_signal_generator">Signal generator</string>
     <string name="rr_goleft">Go Left!</string>
     <string name="rr_goright">Go Right!</string>
+
+    <!-- Settings screen -->
+    <string name="label_gain">Gain</string>
+    <string name="label_duration">Duration</string>
+    <string name="label_random_mode">Random Mode</string>
+    <string name="label_frequency">Frequency</string>
+    <string name="label_pulse_width">Pulse Width</string>
+    <string name="action_ok">OK</string>
 
 </resources>

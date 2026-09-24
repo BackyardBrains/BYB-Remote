@@ -1,16 +1,20 @@
 package com.backyardbrains.bybremote;
 
-import android.Manifest;
+import static com.backyardbrains.bybremote.utils.LogUtils.LOGD;
+import static com.backyardbrains.bybremote.utils.LogUtils.LOGE;
+import static com.backyardbrains.bybremote.utils.LogUtils.makeLogTag;
+
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
 import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.os.Looper;
+import android.provider.Settings;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.Menu;
@@ -21,48 +25,83 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
+import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
+import androidx.activity.SystemBarStyle;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.backyardbrains.bybremote.utils.BluetoothUtils;
-import java.util.List;
-import pub.devrel.easypermissions.AfterPermissionGranted;
-import pub.devrel.easypermissions.AppSettingsDialog;
-import pub.devrel.easypermissions.EasyPermissions;
 
-import static com.backyardbrains.bybremote.utils.LogUtils.LOGD;
-import static com.backyardbrains.bybremote.utils.LogUtils.LOGE;
-import static com.backyardbrains.bybremote.utils.LogUtils.makeLogTag;
-
-public class MainActivity extends AppCompatActivity
-    implements RemoteManagerCallbacks, EasyPermissions.PermissionCallbacks {
+public class MainActivity extends AppCompatActivity implements RemoteManagerCallbacks {
 
     final static String TAG = makeLogTag(MainActivity.class);
 
-    private static final int REQUEST_CODE_ENABLE_BT = 120;
-    private static final int REQUEST_CODE_SETTINGS_SCREEN = 121;
-    private static final int REQUEST_CODE_ACCESS_COARSE_LOCATION_PERM = 122;
-
     private static final long SCANNING_TIMEOUT = 4 * 1000; /* 4 seconds */
 
-    private static final String RR_DEVICE_NAME = "RoboRoach";
+    private static final int SCREEN_MAIN = 0;
+    private static final int SCREEN_SETTINGS = 1;
 
     boolean mScanning = false;
     boolean mTurning = false;
     boolean mOnSettingsScreen = false;
 
+    /* guards so onResume() doesn't stack system dialogs while one is already showing */
+    boolean mAskingPermission = false;
+    boolean mAskingBluetooth = false;
+    boolean mPermissionsDenied = false;
+
     String mDeviceAddress;
 
-    Handler mHandler = new Handler();
+    Handler mHandler = new Handler(Looper.getMainLooper());
     RemoteManager mRemoteManager = null;
     ViewHolder viewHolder;
     Runnable mGATTUpdate;
     int mGATTFreq = 0;
 
     private GestureDetector gestureDetector;
+    private OnBackPressedCallback mSettingsBackCallback;
+
+    private final Runnable mConnectToNearest = new Runnable() {
+        @Override public void run() {
+            connectToNearestBtDevice();
+        }
+    };
+
+    private final ActivityResultLauncher<String[]> mPermissionLauncher =
+        registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+            mAskingPermission = false;
+            if (BluetoothUtils.hasPermissions(this)) {
+                ensureBluetoothOn();
+            } else {
+                LOGD(TAG, "Bluetooth permissions denied");
+                mPermissionsDenied = true;
+                showPermissionDialog();
+            }
+            invalidateOptionsMenu();
+        });
+
+    private final ActivityResultLauncher<Intent> mEnableBtLauncher =
+        registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            mAskingBluetooth = false;
+            // check if user agreed to enable BT.
+            if (result.getResultCode() != Activity.RESULT_OK) btDisabled();
+        });
 
     @Override protected void onCreate(Bundle savedInstanceState) {
+        // Toolbar is dark, so the status bar icons must be light.
+        EdgeToEdge.enable(this, SystemBarStyle.dark(Color.TRANSPARENT));
         super.onCreate(savedInstanceState);
         LOGD(TAG, "onCreate()");
 
@@ -71,17 +110,29 @@ public class MainActivity extends AppCompatActivity
         mRemoteManager = new RemoteManager(this, this);
 
         // check if we have BT and BLE on board
-        if (!BluetoothUtils.checkBleHardwareAvailable(this)) bleMissing();
+        if (!BluetoothUtils.checkBleHardwareAvailable(this)) {
+            bleMissing();
+            return;
+        }
 
         viewHolder = new ViewHolder();
         viewHolder.bind(this);
+
+        // Android 15+ draws behind the system bars: pad the toolbar and content so nothing hides under them.
+        ViewCompat.setOnApplyWindowInsetsListener(viewHolder.root, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            viewHolder.appBar.setPadding(bars.left, bars.top, bars.right, 0);
+            viewHolder.flipper.setPadding(bars.left, 0, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
 
         // set toolbar as actionbar
         setSupportActionBar(viewHolder.toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayShowTitleEnabled(false);
 
-        viewHolder.roachImage.setVisibility(View.VISIBLE);
-        viewHolder.backpackImage.setVisibility(View.INVISIBLE);
+        viewHolder.boardImage.setVisibility(View.VISIBLE);
+        viewHolder.boardConnectedImage.setVisibility(View.INVISIBLE);
         viewHolder.goLeftText.setVisibility(View.INVISIBLE);
         viewHolder.goRightText.setVisibility(View.INVISIBLE);
 
@@ -177,36 +228,39 @@ public class MainActivity extends AppCompatActivity
         final Button button = findViewById(R.id.btnSaveSettings);
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                LOGD(TAG, "Updating RoboRoach Settings");
+                LOGD(TAG, "Updating signal generator settings");
                 mRemoteManager.updateFrequency(viewHolder.Frequecy.getProgress());
 
                 // Perform action on click
-                ViewFlipper vf = findViewById(R.id.viewFlipper);
-                vf.showNext();
-                mOnSettingsScreen = false;
+                showMainScreen();
             }
         });
 
-        gestureDetector = new GestureDetector(this.getBaseContext(), new SwipeGestureDetector());
+        // Back from the settings screen returns to the main screen instead of closing the app.
+        mSettingsBackCallback = new OnBackPressedCallback(false) {
+            @Override public void handleOnBackPressed() {
+                showMainScreen();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, mSettingsBackCallback);
+
+        gestureDetector = new GestureDetector(this, new SwipeGestureDetector());
     }
 
     @Override protected void onResume() {
         super.onResume();
         LOGD(TAG, "onResume()");
-
-        // on every resume check if BT is enabled (user could turn it off while app was in background etc.)
-        if (!BluetoothUtils.isBtEnabled(this)) {
-            // BT is not turned on - ask user to make it enabled
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_CODE_ENABLE_BT);
-            // see onActivityResult to check what is the status of our request
-        } else {
-            // check if we have location permission
-            checkLocation();
-        }
+        if (isFinishing()) return;
 
         // if RemoteManager cannot be initialized we should leave
-        if (!mRemoteManager.initialize()) finish();
+        if (!mRemoteManager.initialize()) {
+            finish();
+            return;
+        }
+
+        // on every resume check permissions and that BT is enabled
+        // (user could turn it off while app was in background etc.)
+        checkPrerequisites();
 
         invalidateOptionsMenu();
     }
@@ -214,40 +268,23 @@ public class MainActivity extends AppCompatActivity
     @Override protected void onPause() {
         super.onPause();
         LOGD(TAG, "onPause()");
+        if (viewHolder == null) return;
 
         if (mRemoteManager.isConnected()) {
-            runOnUiThread(new Runnable() {
-                @Override public void run() {
-                    mRemoteManager.stopMonitoringRssiValue();
-                    mRemoteManager.disconnect();
-                    mRemoteManager.close();
-                    invalidateOptionsMenu();
-                }
-            });
+            mRemoteManager.disconnect();
+            mRemoteManager.close();
+            // close() stops callbacks, so reset the "connected" look ourselves
+            showDisconnected();
+            invalidateOptionsMenu();
         } else if (mScanning) {
             stopLeScan();
         }
     }
 
     @Override protected void onDestroy() {
+        mHandler.removeCallbacksAndMessages(null);
         if (mRemoteManager != null) mRemoteManager.close();
         super.onDestroy();
-    }
-
-    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // check if user agreed to enable BT.
-        if (requestCode == REQUEST_CODE_ENABLE_BT) {
-            if (resultCode == Activity.RESULT_CANCELED) {
-                // user didn't want to turn on BT
-                btDisabled();
-                return;
-            } else if (resultCode == Activity.RESULT_OK) {
-                // check if we have location permission
-                checkLocation();
-            }
-        }
-
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override public boolean onCreateOptionsMenu(Menu menu) {
@@ -279,56 +316,37 @@ public class MainActivity extends AppCompatActivity
     @Override public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
-        switch (item.getItemId()) {
-            case R.id.menu_scan:
-                // start LE scan
-                startLeScan();
-                break;
-            case R.id.menu_stop:
-                // stop LE scan
-                stopLeScan();
-                break;
-            case R.id.menu_disconnect:
-                disconnect();
-                break;
-            case R.id.menu_settings:
-                if (!mOnSettingsScreen) {
-                    ViewFlipper vf = findViewById(R.id.viewFlipper);
-                    vf.showNext();
-                    mOnSettingsScreen = true;
-                }
-                break;
+        final int id = item.getItemId();
+        if (id == R.id.menu_scan) {
+            // start LE scan
+            startLeScan();
+        } else if (id == R.id.menu_stop) {
+            // stop LE scan
+            stopLeScan();
+        } else if (id == R.id.menu_disconnect) {
+            disconnect();
+        } else if (id == R.id.menu_settings) {
+            showSettingsScreen();
         }
         return true;
     }
 
     @Override public boolean onTouchEvent(MotionEvent event) {
-        return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event);
+        return (gestureDetector != null && gestureDetector.onTouchEvent(event)) || super.onTouchEvent(event);
     }
 
-    public void updateSettingConstraints() {
-        //if ( self.roboRoach.randomMode.boolValue ){
-        //    [freqSlider setEnabled:NO];
-        //    [pulseWidthSlider setEnabled:NO];
-        //}else{
-        //    [freqSlider setEnabled:YES];
-        //    [pulseWidthSlider setEnabled:YES];
-        //}
-    }
-
-    @Override public void uiDeviceConnected(final BluetoothGatt gatt, final BluetoothDevice device) {
+    @Override public void uiDeviceConnected(final BluetoothDevice device) {
         LOGD(TAG, "uiDeviceConnected()");
         runOnUiThread(new Runnable() {
             @Override public void run() {
-                //mDeviceStatus.setText("connected");
-                viewHolder.backpackImage.setImageAlpha(150);
-                viewHolder.backpackImage.setVisibility(View.VISIBLE);
+                viewHolder.boardConnectedImage.setImageAlpha(150);
+                viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
                 invalidateOptionsMenu();
             }
         });
     }
 
-    @Override public void uiDeviceDisconnected(final BluetoothGatt gatt, final BluetoothDevice device) {
+    @Override public void uiDeviceDisconnected(final BluetoothDevice device) {
         LOGD(TAG, "uiDeviceDisconnected()");
 
         // let's reset strongest signal and last connected device address
@@ -337,12 +355,10 @@ public class MainActivity extends AppCompatActivity
 
         runOnUiThread(new Runnable() {
             @Override public void run() {
-                viewHolder.configText.setText("");
-                viewHolder.backpackImage.setVisibility(View.INVISIBLE);
+                showDisconnected();
+                invalidateOptionsMenu();
             }
         });
-
-        invalidateOptionsMenu();
     }
 
     @Override public void uiServicesFound() {
@@ -353,8 +369,8 @@ public class MainActivity extends AppCompatActivity
         runOnUiThread(new Runnable() {
             @Override public void run() {
                 viewHolder.configText.setText(mRemoteManager.getConfigurationString());
-                viewHolder.backpackImage.setImageAlpha(255);
-                viewHolder.backpackImage.setVisibility(View.VISIBLE);
+                viewHolder.boardConnectedImage.setImageAlpha(255);
+                viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
 
                 viewHolder.Frequecy.setProgress(mRemoteManager.getRemoteFrequency());
                 viewHolder.Gain.setProgress(mRemoteManager.getRemoteGain());
@@ -372,88 +388,37 @@ public class MainActivity extends AppCompatActivity
 
     private int mStrongestSignal = Integer.MIN_VALUE;
 
-    @Override public void uiDeviceFound(BluetoothDevice device, int rssi, byte[] record) {
-        //LOGD(TAG, "uiDeviceFound()");
-
-        if (device == null || device.getAddress() == null || !RR_DEVICE_NAME.equals(device.getName())) return;
-
+    @SuppressLint("MissingPermission") // only reached from a scan, which needs the permission
+    @Override public void uiDeviceFound(BluetoothDevice device, int rssi) {
         if (rssi > mStrongestSignal) {
-            LOGD(TAG, "uiDeviceFound() ... Found nearest RoboRoach: " + rssi);
+            LOGD(TAG, "uiDeviceFound() ... Found nearest signal generator: " + rssi);
             mStrongestSignal = rssi;
             mDeviceAddress = device.getAddress();
         }
     }
 
     void connectToNearestBtDevice() {
+        // the user pressed Stop (or we left the screen) while we were waiting
+        if (!mScanning) return;
+
         if (mDeviceAddress != null) {
-            LOGD(TAG, "connectToNearestBtDevice() ... Found a RoboRoach!");
+            LOGD(TAG, "connectToNearestBtDevice() ... Found a signal generator!");
 
-            // adding to the UI have to happen in UI thread
-            runOnUiThread(new Runnable() {
-                @Override public void run() {
-                    viewHolder.backpackImage.setImageAlpha(60);  //slowly builds up until connection
-                    viewHolder.backpackImage.setVisibility(View.VISIBLE);
+            viewHolder.boardConnectedImage.setImageAlpha(60);  //slowly builds up until connection
+            viewHolder.boardConnectedImage.setVisibility(View.VISIBLE);
 
-                    LOGD(TAG, "connectToNearestBtDevice() ... mDeviceAddress = " + mDeviceAddress);
+            LOGD(TAG, "connectToNearestBtDevice() ... mDeviceAddress = " + mDeviceAddress);
 
-                    if (mScanning) {
-                        mScanning = false;
-                        invalidateOptionsMenu();
-                        mRemoteManager.stopScanning();
-                        LOGD(TAG, "connectToNearestBtDevice() ... mRemoteManager.stopScanning()");
-                    }
+            mScanning = false;
+            invalidateOptionsMenu();
+            mRemoteManager.stopScanning();
 
-                    LOGD(TAG, "connectToNearestBtDevice() ... about to call mRemoteManager.connect()");
-                    mRemoteManager.connect(mDeviceAddress);
-                    LOGD(TAG, "connectToNearestBtDevice() ... finished calling mRemoteManager.connect()");
-                }
-            });
+            mRemoteManager.connect(mDeviceAddress);
         } else {
-            LOGD(TAG, "connectToNearestBtDevice() ... Couldn't find a RoboRoach! Continue to scan.");
-            mHandler.postDelayed(new Runnable() {
-                @Override public void run() {
-                    connectToNearestBtDevice();
-                }
-            }, SCANNING_TIMEOUT);
+            LOGD(TAG, "connectToNearestBtDevice() ... Couldn't find a signal generator! Continue to scan.");
+            mHandler.postDelayed(mConnectToNearest, SCANNING_TIMEOUT);
         }
     }
-
-    //@Override public void uiDeviceFound(BluetoothDevice device, int rssi, byte[] record) {
-    //    LOGD(TAG, "uiDeviceFound()");
-    //
-    //    if (mHandler != null) mHandler.removeCallbacks(scanTimeout);
-    //
-    //    if (device == null || device.getAddress() == null || device.getName() == null) return;
-    //
-    //    mDeviceAddress = device.getAddress();
-    //
-    //    if (device.getName().equals("RoboRoach")) {
-    //        LOGD(TAG, "uiDeviceFound() ...Found a RoboRoach!");
-    //
-    //        // adding to the UI have to happen in UI thread
-    //        runOnUiThread(new Runnable() {
-    //            @Override public void run() {
-    //                viewHolder.backpackImage.setImageAlpha(60);  //slowly builds up until connection
-    //                viewHolder.backpackImage.setVisibility(View.VISIBLE);
-    //
-    //                LOGD(TAG, "uiDeviceFound() ... mDeviceAddress = " + mDeviceAddress);
-    //
-    //                if (mScanning) {
-    //                    mScanning = false;
-    //                    invalidateOptionsMenu();
-    //                    mRemoteManager.stopScanning();
-    //                    LOGD(TAG, "uiDeviceFound() ... mRemoteManager.stopScanning()");
-    //                }
-    //
-    //                LOGD(TAG, "uiDeviceFound() ... about to call mRemoteManager.connect()");
-    //                mRemoteManager.connect(mDeviceAddress);
-    //                LOGD(TAG, "uiDeviceFound() ... finished calling mRemoteManager.connect()");
-    //            }
-    //        });
-    //    } else {
-    //        LOGD(TAG, "uiDeviceFound() ... Found a non-RoboRoach :( !");
-    //    }
-    //}
 
     @Override public void uiLeftTurnSentSuccessfully(final int stimulusDuration) {
         runOnUiThread(new Runnable() {
@@ -490,17 +455,24 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startLeScan() {
-        mHandler.postDelayed(new Runnable() {
-            @Override public void run() {
-                connectToNearestBtDevice();
-            }
-        }, SCANNING_TIMEOUT);
+        // tapping Find is an explicit request, so ask again even if permission was refused before
+        mPermissionsDenied = false;
+        if (!checkPrerequisites()) return;
+        if (BluetoothUtils.isLocationOffForScanning(this)) {
+            showLocationDialog();
+            return;
+        }
+
+        mStrongestSignal = Integer.MIN_VALUE;
+        mDeviceAddress = null;
+        mHandler.postDelayed(mConnectToNearest, SCANNING_TIMEOUT);
         mScanning = true;
         mRemoteManager.startScanning();
         invalidateOptionsMenu();
     }
 
     private void stopLeScan() {
+        mHandler.removeCallbacks(mConnectToNearest);
         mScanning = false;
         mRemoteManager.stopScanning();
         invalidateOptionsMenu();
@@ -508,12 +480,27 @@ public class MainActivity extends AppCompatActivity
 
     private void disconnect() {
         mRemoteManager.disconnect();
-        //mRemoteManager.close();
-        if (mOnSettingsScreen) {
-            ViewFlipper vf = findViewById(R.id.viewFlipper);
-            vf.showNext();
-            mOnSettingsScreen = false;
-        }
+        showMainScreen();
+    }
+
+    private void showDisconnected() {
+        viewHolder.configText.setText("");
+        viewHolder.boardConnectedImage.setVisibility(View.INVISIBLE);
+        showMainScreen();
+    }
+
+    private void showSettingsScreen() {
+        if (mOnSettingsScreen) return;
+        viewHolder.flipper.setDisplayedChild(SCREEN_SETTINGS);
+        mOnSettingsScreen = true;
+        mSettingsBackCallback.setEnabled(true);
+    }
+
+    private void showMainScreen() {
+        if (!mOnSettingsScreen) return;
+        viewHolder.flipper.setDisplayedChild(SCREEN_MAIN);
+        mOnSettingsScreen = false;
+        mSettingsBackCallback.setEnabled(false);
     }
 
     /* make sure that potential scanning will take no longer
@@ -540,63 +527,85 @@ public class MainActivity extends AppCompatActivity
     }
 
     //==============================================
-    // ACCESS_COARSE_LOCATION PERMISSION
+    // PERMISSIONS, BLUETOOTH AND LOCATION
     //==============================================
 
-    @Override public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-        @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
-    }
-
-    @Override public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
-        LOGD(TAG, "onPermissionsGranted:" + requestCode + ":" + perms.size());
-    }
-
-    @Override public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
-        LOGD(TAG, "onPermissionsDenied:" + requestCode + ":" + perms.size());
-        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
-            new AppSettingsDialog.Builder(this).setRationale(R.string.rationale_ask_again)
-                .setTitle(R.string.title_settings_dialog)
-                .setPositiveButton(R.string.action_setting)
-                .setNegativeButton(R.string.action_cancel)
-                .setRequestCode(REQUEST_CODE_SETTINGS_SCREEN)
-                .build()
-                .show();
+    /**
+     * Walks the user through whatever is missing: the Bluetooth permission first (Android 12+ needs it even to ask
+     * for Bluetooth to be turned on), then Bluetooth itself.
+     *
+     * @return {@code true} when everything is ready to scan.
+     */
+    private boolean checkPrerequisites() {
+        if (!BluetoothUtils.hasPermissions(this)) {
+            if (!mPermissionsDenied && !mAskingPermission) {
+                mAskingPermission = true;
+                mPermissionLauncher.launch(BluetoothUtils.requiredPermissions());
+            }
+            return false;
         }
+        return ensureBluetoothOn();
     }
 
-    @AfterPermissionGranted(REQUEST_CODE_ACCESS_COARSE_LOCATION_PERM) void checkLocation() {
-        if (!EasyPermissions.hasPermissions(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
-            // Request the permission
-            EasyPermissions.requestPermissions(this, getString(R.string.rationale_access_coarse_location),
-                REQUEST_CODE_ACCESS_COARSE_LOCATION_PERM, Manifest.permission.ACCESS_COARSE_LOCATION);
+    @SuppressLint("MissingPermission") // callers check BluetoothUtils.hasPermissions() first
+    private boolean ensureBluetoothOn() {
+        if (BluetoothUtils.isBtEnabled(this)) return true;
+        if (!mAskingBluetooth) {
+            // BT is not turned on - ask user to make it enabled
+            mAskingBluetooth = true;
+            mEnableBtLauncher.launch(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE));
         }
+        return false;
+    }
+
+    private void showPermissionDialog() {
+        new AlertDialog.Builder(this).setTitle(R.string.title_permission_needed)
+            .setMessage(R.string.rationale_bluetooth)
+            .setPositiveButton(R.string.action_setting, (dialog, which) -> startActivity(
+                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", getPackageName(), null))))
+            .setNegativeButton(R.string.action_cancel, null)
+            .show();
+    }
+
+    private void showLocationDialog() {
+        new AlertDialog.Builder(this).setTitle(R.string.title_location_off)
+            .setMessage(R.string.message_location_off)
+            .setPositiveButton(R.string.action_setting,
+                (dialog, which) -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+            .setNegativeButton(R.string.action_cancel, null)
+            .show();
     }
 
     /**
      *
      */
     static class ViewHolder {
+        View root;
+        View appBar;
         Toolbar toolbar;
+        ViewFlipper flipper;
 
         TextView goLeftText;
         TextView goRightText;
         TextView configText;
-        ImageView roachImage;
-        ImageView backpackImage;
+        ImageView boardImage;
+        ImageView boardConnectedImage;
 
         SeekBar Frequecy;
         SeekBar Duration;
         SeekBar PulseWidth;
         SeekBar Gain;
-        Switch RandomMode;
+        SwitchCompat RandomMode;
 
         // Binds UI elements to local variables
         void bind(@NonNull Activity activity) {
+            root = activity.findViewById(R.id.root);
+            appBar = activity.findViewById(R.id.appBar);
             toolbar = activity.findViewById(R.id.toolbar);
-            roachImage = activity.findViewById(R.id.imageRoach);
-            backpackImage = activity.findViewById(R.id.imageBackpack);
+            flipper = activity.findViewById(R.id.viewFlipper);
+            boardImage = activity.findViewById(R.id.imageBoard);
+            boardConnectedImage = activity.findViewById(R.id.imageBoardConnected);
             goLeftText = activity.findViewById(R.id.textGoLeft);
             goRightText = activity.findViewById(R.id.textGoRight);
             configText = activity.findViewById(R.id.textConfig);
@@ -616,7 +625,9 @@ public class MainActivity extends AppCompatActivity
         private static final int SWIPE_MAX_OFF_PATH = 200;
         private static final int SWIPE_THRESHOLD_VELOCITY = 200;
 
-        @Override public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        @Override public boolean onFling(@Nullable MotionEvent e1, @NonNull MotionEvent e2, float velocityX,
+            float velocityY) {
+            if (e1 == null) return false;
             try {
                 float diffAbs = Math.abs(e1.getY() - e2.getY());
                 float diff = e1.getX() - e2.getX();
@@ -638,5 +649,3 @@ public class MainActivity extends AppCompatActivity
         }
     }
 }
-
-

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The 1.x app used AppCompat's DarkActionBar defaults; kept so the app looks the same. -->
+    <color name="primary">#212121</color>
+    <color name="primary_dark">#000000</color>
+    <color name="accent">#009688</color>
+</resources>
