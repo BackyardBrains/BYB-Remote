@@ -69,11 +69,11 @@
                 android:src="@drawable/board_connected"
                 android:visibility="invisible"/>
 
-            <!-- RoboRoach skin (Settings): the 1.x pictures. -->
+            <!-- RoboRoach skin (Settings): the 1.x pictures, scaled to 75% to fit landscape. -->
             <ImageView
                 android:id="@+id/imageRoach"
-                android:layout_width="120dp"
-                android:layout_height="306dp"
+                android:layout_width="90dp"
+                android:layout_height="230dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/description_roboroach"
                 android:src="@drawable/roach"
@@ -81,10 +81,10 @@
 
             <ImageView
                 android:id="@+id/imageBackpack"
-                android:layout_width="127dp"
-                android:layout_height="172dp"
+                android:layout_width="95dp"
+                android:layout_height="129dp"
                 android:layout_gravity="center"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="15dp"
                 android:importantForAccessibility="no"
                 android:src="@drawable/backpack"
                 android:visibility="gone"/>
