@@ -64,6 +64,8 @@ jobs:
     name: play-${{ inputs.track }}${{ inputs.promote_from != 'none' && '-promote' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Signing and Play secrets live in this environment, which only main can use.
+    environment: release
     steps:
       - name: Require main and sane inputs
         env:

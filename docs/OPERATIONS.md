@@ -8,8 +8,8 @@ reviewer are the gate.
 
 - **Every PR and every push to main** runs CI: Android lint, unit tests (the Bluetooth protocol
   lock), debug and release builds, a launch smoke test on Android 11 and Android 16 emulators
-  (screenshots and logs kept as artifacts), and actionlint on workflow changes. Docs-only changes
-  skip CI.
+  (screenshots and logs kept as artifacts), and actionlint. Branch protection on `main` requires
+  the build and both emulator checks before a PR can merge.
 - New bug reports from the form arrive labelled `bug`, `needs-triage` and `platform:android`.
 
 ## What someone starts by hand

@@ -32,8 +32,8 @@ needs them.
   imperative summaries; reference the issue with `Refs #N`.
 - Open the PR with the template. The **For testers (plain English)** section is required: one or
   two sentences a non-programmer understands, or exactly `Nothing to test.`
-- CI must be green before merge, including both emulator smoke jobs. (This private repo cannot
-  enforce required checks; green is still the rule.)
+- CI must be green before merge. Branch protection on `main` requires the build and both
+  emulator smoke checks.
 - Nobody reviews their own work: a different agent or person reviews before merge.
 - Anything that needs a real signal generator or phone goes to the testers as a
   `needs-verification` issue with numbered plain-English steps. Never to Greg.

@@ -2,25 +2,14 @@ name: CI
 
 # Every pull request and every push to main: lint, unit tests, debug + release builds, then a
 # launch smoke test on an Android 11 and an Android 16 emulator. All jobs run on Ubuntu runners.
+# No path filters: branch protection requires these checks, so they must report on every PR.
 # The release APK here is signed with a throwaway debug key: it proves the release build works but
 # is not for testers (use release-android-sideload.yml or the Play internal track for that).
 
 on:
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "fastlane/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/pull_request_template.md"
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "fastlane/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/pull_request_template.md"
   workflow_dispatch:
 
 concurrency:

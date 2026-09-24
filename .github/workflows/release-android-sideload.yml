@@ -29,6 +29,8 @@ jobs:
   sideload:
     name: android-sideload
     runs-on: ubuntu-latest
+    # Signing secrets live in this environment, which only main can use.
+    environment: release
     timeout-minutes: 30
     permissions:
       contents: write

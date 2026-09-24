@@ -22,8 +22,7 @@ in both lanes and every new commit gets a higher one.
 3. Testers download the APK on the phone and allow the install when asked. Builds signed with the
    same upload key install over each other.
 
-Because the repo is private, testers need read access to download from the release page.
-Otherwise, send them the APK from the run artifact.
+The repo is public, so the release page link works for anyone. There is no GitHub login needed.
 
 ## Google Play
 
@@ -52,7 +51,9 @@ becomes the "What's new" text for every upload, so update it for each production
 
 ## One-time setup
 
-These secrets live in the repo's GitHub Actions secrets, never in files:
+These secrets go in the **`release` environment** (Settings → Environments → release), never in
+files or repo-level secrets. That environment only accepts runs from `main`, so a workflow edited on
+another branch cannot read them:
 
 | Secret | What |
 |---|---|
