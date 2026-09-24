@@ -1,0 +1,13 @@
+BYB Remote controls the Backyard Brains Bluetooth signal generator from your phone.
+
+Tap "Find Signal Generator" and the app connects to the nearest one. Swipe left or right to send a pulse train on either output channel, and open Settings to shape the signal:
+
+• Frequency: how many pulses per second
+• Pulse width: how long each pulse lasts
+• Duration: how long each burst runs
+• Gain: output level
+• Random mode: randomized stimulus timing
+
+The signal generator is a tiny, battery-powered, two-channel square-wave generator for classroom and bench experiments. BYB Remote needs Bluetooth, and on Android 11 and older it also needs Location switched on so the phone can see nearby Bluetooth devices. The app does not collect or share any personal data.
+
+Made by Backyard Brains, neuroscience for everyone.

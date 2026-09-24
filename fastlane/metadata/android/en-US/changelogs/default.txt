@@ -1,0 +1,1 @@
+Rebuilt for current Android phones: works on Android 16, uses the new Nearby devices permission, and has a fresh look.

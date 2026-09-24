@@ -1,0 +1,227 @@
+name: Release - Google Play
+
+# One pipeline for every Play track. Dispatch-only, main-only, and a dry run by default:
+# nothing reaches Google Play unless someone dispatches it with dry_run=false.
+# internal = test build for testers (always OK). production = Greg's call only (docs/RELEASING.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Destination Play track."
+        type: choice
+        required: true
+        default: internal
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      dry_run:
+        description: "Build and validate only (fastlane supply --validate_only); publish nothing."
+        type: boolean
+        required: true
+        default: true
+      release_status:
+        description: "Google Play release status."
+        type: choice
+        required: true
+        default: completed
+        options:
+          - draft
+          - completed
+          - inProgress
+          - halted
+      rollout:
+        description: "Production staged rollout fraction, e.g. 0.1. Empty means full rollout."
+        type: string
+        required: false
+        default: ""
+      promote_from:
+        description: "Promote the current release from this track instead of building a new AAB."
+        type: choice
+        required: false
+        default: none
+        options:
+          - none
+          - internal
+          - alpha
+          - beta
+
+concurrency:
+  group: release-play
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PACKAGE_NAME: "com.backyardbrains.bybremote"
+  FASTLANE_VERSION: "2.240.1"
+
+jobs:
+  release:
+    name: play-${{ inputs.track }}${{ inputs.promote_from != 'none' && '-promote' || '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Require main and sane inputs
+        env:
+          WORKFLOW_REF: ${{ github.ref }}
+          TRACK: ${{ inputs.track }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ROLLOUT: ${{ inputs.rollout }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+          PROMOTE_FROM: ${{ inputs.promote_from }}
+        run: |
+          set -euo pipefail
+          if [ "$WORKFLOW_REF" != "refs/heads/main" ]; then
+            echo "::error::Store releases come from main only; received $WORKFLOW_REF"
+            exit 1
+          fi
+          if [ "$PROMOTE_FROM" = "$TRACK" ]; then
+            echo "::error::promote_from must differ from the destination track."
+            exit 1
+          fi
+          if [ -n "$ROLLOUT" ] && [ "$TRACK" != "production" ]; then
+            echo "::error::rollout only applies to the production track."
+            exit 1
+          fi
+          if [ -n "$ROLLOUT" ] && [ "$RELEASE_STATUS" != "inProgress" ]; then
+            echo "::error::rollout requires release_status=inProgress."
+            exit 1
+          fi
+          if [ "$DRY_RUN" != "true" ] && [ "$TRACK" = "production" ]; then
+            echo "::warning::Real production release. Confirm the Play listing, data safety form and content rating are current."
+          fi
+
+      - name: Checkout (full history for the version code)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install fastlane
+        run: gem install fastlane -v "$FASTLANE_VERSION" --no-document
+
+      - name: Compute version
+        id: version
+        if: inputs.promote_from == 'none'
+        run: |
+          set -euo pipefail
+          code="$(bash tool/version_code.sh)"
+          name="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "BYB Remote $name ($code)"
+
+      - name: Validate Gradle wrapper checksum
+        if: inputs.promote_from == 'none'
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up JDK 17
+        if: inputs.promote_from == 'none'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        if: inputs.promote_from == 'none'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Decode Android upload key
+        if: inputs.promote_from == 'none'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Secret ${name} is not set. See docs/RELEASING.md > One-time setup."
+              exit 1
+            fi
+          done
+          key_path="$RUNNER_TEMP/byb-remote-upload-key.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Build signed release AAB
+        if: inputs.promote_from == 'none'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          set -euo pipefail
+          ./gradlew --stacktrace bundleRelease -PversionCode="$VERSION_CODE"
+          test -s app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload AAB artifact
+        if: inputs.promote_from == 'none'
+        uses: actions/upload-artifact@v7
+        with:
+          name: byb-remote-aab-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: fastlane supply to Google Play
+        env:
+          SUPPLY_JSON_KEY_DATA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          TRACK: ${{ inputs.track }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ROLLOUT: ${{ inputs.rollout }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+          PROMOTE_FROM: ${{ inputs.promote_from }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPPLY_JSON_KEY_DATA:-}" ]; then
+            echo "::error::Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not set. See docs/RELEASING.md > One-time setup."
+            exit 1
+          fi
+          args=(supply --package_name "$ANDROID_PACKAGE_NAME" --metadata_path fastlane/metadata/android --timeout 600)
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--validate_only true)
+          fi
+          if [ "$PROMOTE_FROM" != "none" ]; then
+            args+=(--track "$PROMOTE_FROM" --track_promote_to "$TRACK"
+                   --track_promote_release_status "$RELEASE_STATUS" --skip_upload_changelogs true)
+          else
+            args+=(--track "$TRACK" --aab app/build/outputs/bundle/release/app-release.aab
+                   --version_name "$VERSION_NAME" --release_status "$RELEASE_STATUS")
+          fi
+          if [ -n "$ROLLOUT" ]; then
+            args+=(--rollout "$ROLLOUT")
+          fi
+          fastlane "${args[@]}"
+          {
+            echo "### Google Play"
+            echo
+            echo "- track: \`$TRACK\`"
+            echo "- dry_run: \`$DRY_RUN\`"
+            echo "- release_status: \`$RELEASE_STATUS\`"
+            if [ "$PROMOTE_FROM" != "none" ]; then
+              echo "- promoted from: \`$PROMOTE_FROM\`"
+            else
+              echo "- version: \`$VERSION_NAME ($VERSION_CODE)\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up Android upload key
+        if: always()
+        run: |
+          if [ -n "${ANDROID_KEYSTORE_PATH:-}" ] && [ -f "$ANDROID_KEYSTORE_PATH" ]; then
+            shred -u "$ANDROID_KEYSTORE_PATH" 2>/dev/null || rm -f "$ANDROID_KEYSTORE_PATH"
+          fi

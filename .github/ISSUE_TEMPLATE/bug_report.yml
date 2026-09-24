@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a BYB Remote bug, crash, or a problem talking to the signal generator.
+title: "[Bug]: "
+labels: ["bug", "needs-triage", "platform:android"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Plain words are perfect.
+  - type: input
+    id: phone
+    attributes:
+      label: Phone and Android version
+      placeholder: "Example: Pixel 8, Android 16"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version / build
+      description: Shown on the app's page in Settings > Apps > BYB Remote.
+      placeholder: "Example: 2.0.0 (100042)"
+    validations:
+      required: false
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open BYB Remote
+        2. Tap Find Signal Generator
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, video, or error text
+    validations:
+      required: false
+  - type: checkboxes
+    id: hardware
+    attributes:
+      label: Hardware / retest notes
+      options:
+        - label: This needs a retest with a real signal generator.
+        - label: I can retest a test build when one is posted.
