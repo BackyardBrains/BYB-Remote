@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BYB-Remote"
+rootProject.name = "RoboRoach-Android-App"
 include(":app")

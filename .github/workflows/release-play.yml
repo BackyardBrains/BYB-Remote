@@ -56,7 +56,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PACKAGE_NAME: "com.backyardbrains.bybremote"
+  ANDROID_PACKAGE_NAME: "com.backyardbrains.bybbackpack"
   FASTLANE_VERSION: "2.240.1"
 
 jobs:
@@ -119,7 +119,7 @@ jobs:
           name="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "BYB Remote $name ($code)"
+          echo "BYB Backpack $name ($code)"
 
       - name: Validate Gradle wrapper checksum
         if: inputs.promote_from == 'none'
@@ -151,7 +151,7 @@ jobs:
               exit 1
             fi
           done
-          key_path="$RUNNER_TEMP/byb-remote-upload-key.jks"
+          key_path="$RUNNER_TEMP/byb-backpack-upload-key.jks"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$key_path"
           chmod 600 "$key_path"
           echo "ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
@@ -172,7 +172,7 @@ jobs:
         if: inputs.promote_from == 'none'
         uses: actions/upload-artifact@v7
         with:
-          name: byb-remote-aab-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          name: byb-backpack-aab-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
           path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
           if-no-files-found: error

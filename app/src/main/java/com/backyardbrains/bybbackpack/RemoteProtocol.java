@@ -1,4 +1,4 @@
-package com.backyardbrains.bybremote;
+package com.backyardbrains.bybbackpack;
 
 import java.util.UUID;
 

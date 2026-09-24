@@ -1,6 +1,6 @@
-# BYB Remote (Android) — Agent Operating Rules
+# BYB Backpack (Android) — Agent Operating Rules
 
-BYB Remote is a small native Java Android app that controls the Backyard Brains Bluetooth signal
+BYB Backpack is a small native Java Android app that controls the Backyard Brains Bluetooth signal
 generator. Keep it small and native: no framework rewrites, no new dependencies unless the task
 needs them.
 
@@ -10,13 +10,14 @@ needs them.
    advertised-name match, the service/characteristic UUIDs, or the byte encodings in
    `RemoteProtocol.java` unless a matching firmware change is linked. `RemoteProtocolTest` must
    stay green. Reference: `docs/PROTOCOL.md`.
-2. **The application ID stays `com.backyardbrains.bybremote`.** A different ID is a different
-   Google Play app.
-3. **The app is BYB Remote, matching the iOS app.** The default look is the board picture and
-   "Find Signal Generator". The classic RoboRoach skin (roach and backpack pictures, "Find
-   RoboRoach") is a switch in Settings, off by default and remembered between launches. Protocol
-   names (for example `ROBOROACH_FREQUENCY` and the advertised device name) stay as the firmware
-   defines them.
+2. **The application ID stays `com.backyardbrains.bybbackpack`.** A different ID is a different
+   Google Play app. (The old `com.backyardbrains.bybremote` Play listing is tied to a signing key
+   we no longer have, so it is not used.)
+3. **The app is BYB Backpack** (the iOS counterpart is called BYB Remote). The default look is
+   the board picture and "Find Signal Generator". The classic RoboRoach skin (roach and backpack
+   pictures, "Find RoboRoach") is a switch in Settings, off by default and remembered between
+   launches. Protocol names (for example `ROBOROACH_FREQUENCY` and the advertised device name) stay
+   as the firmware defines them.
 4. **`targetSdk` meets Google Play's current requirement** (API 36 since 2026-08-31; Google raises
    it every August). Raising it is its own PR with emulator smoke screenshots checked.
 5. **One change = one PR. Surgical diffs.** No drive-by refactors, reformatting, or dependency

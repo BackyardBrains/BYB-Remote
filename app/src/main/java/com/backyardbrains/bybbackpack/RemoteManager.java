@@ -1,15 +1,15 @@
-package com.backyardbrains.bybremote;
+package com.backyardbrains.bybbackpack;
 
-import static com.backyardbrains.bybremote.RemoteProtocol.BATTERY_LEVEL;
-import static com.backyardbrains.bybremote.RemoteProtocol.BATTERY_SERVICE;
-import static com.backyardbrains.bybremote.RemoteProtocol.BYB_ROBOROACH_SERVICE;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_DURATION_IN_5MS;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_FREQUENCY;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_GAIN;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_PULSE_WIDTH;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_RANDOM_MODE;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_STIMULATE_LEFT;
-import static com.backyardbrains.bybremote.RemoteProtocol.ROBOROACH_STIMULATE_RIGHT;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.BATTERY_LEVEL;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.BATTERY_SERVICE;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.BYB_ROBOROACH_SERVICE;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_DURATION_IN_5MS;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_FREQUENCY;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_GAIN;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_PULSE_WIDTH;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_RANDOM_MODE;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_STIMULATE_LEFT;
+import static com.backyardbrains.bybbackpack.RemoteProtocol.ROBOROACH_STIMULATE_RIGHT;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -31,7 +31,7 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 import androidx.annotation.NonNull;
-import com.backyardbrains.bybremote.utils.BluetoothUtils;
+import com.backyardbrains.bybbackpack.utils.BluetoothUtils;
 import java.util.UUID;
 
 /**

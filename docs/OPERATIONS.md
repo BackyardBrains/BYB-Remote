@@ -1,6 +1,6 @@
-# How BYB Remote runs
+# How BYB Backpack runs
 
-BYB Remote uses the same repo system as SpikerBot, scaled down for a small app. The GitHub repo is
+BYB Backpack uses the same repo system as SpikerBot, scaled down for a small app. The GitHub repo is
 the operating system: issues are the queue, labels are the state, PRs are the work, and CI plus a
 reviewer are the gate.
 

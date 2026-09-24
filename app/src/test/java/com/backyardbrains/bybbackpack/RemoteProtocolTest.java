@@ -1,4 +1,4 @@
-package com.backyardbrains.bybremote;
+package com.backyardbrains.bybbackpack;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

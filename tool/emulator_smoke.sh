@@ -8,7 +8,7 @@ set -euo pipefail
 
 APK="$1"
 OUT="$2"
-PKG="com.backyardbrains.bybremote"
+PKG="com.backyardbrains.bybbackpack"
 mkdir -p "$OUT"
 
 sdk="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
@@ -62,7 +62,7 @@ adb shell am start -W -S -f 0x10008000 -n "$PKG/.MainActivity"
 shot 2-permission-granted
 if ! adb shell pidof "$PKG" > /dev/null; then
   adb logcat -d > "$OUT/logcat.txt"
-  echo "::error::BYB Remote is not running after a launch with permission granted (API $sdk)"
+  echo "::error::BYB Backpack is not running after a launch with permission granted (API $sdk)"
   exit 1
 fi
 
@@ -86,7 +86,7 @@ adb shell dumpsys bluetooth_manager > "$OUT/bluetooth.txt" 2>&1 || true
 adb shell pidof "$PKG" > "$OUT/pid.txt" 2>&1 || echo "not running" > "$OUT/pid.txt"
 
 if grep -q "Process: $PKG" "$OUT/crash.txt" "$OUT/logcat.txt"; then
-  echo "::error::BYB Remote crashed on API $sdk"
+  echo "::error::BYB Backpack crashed on API $sdk"
   grep -A 30 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -60
   exit 1
 fi

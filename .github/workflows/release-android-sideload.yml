@@ -69,7 +69,7 @@ jobs:
           name="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "BYB Remote $name ($code)"
+          echo "BYB Backpack $name ($code)"
 
       - name: Decode Android upload key
         env:
@@ -85,7 +85,7 @@ jobs:
               exit 1
             fi
           done
-          key_path="$RUNNER_TEMP/byb-remote-upload-key.jks"
+          key_path="$RUNNER_TEMP/byb-backpack-upload-key.jks"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$key_path"
           chmod 600 "$key_path"
           echo "ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
@@ -100,13 +100,13 @@ jobs:
         run: |
           set -euo pipefail
           ./gradlew --stacktrace assembleRelease -PversionCode="$VERSION_CODE"
-          asset="BYB-Remote-${VERSION_NAME}-${VERSION_CODE}.apk"
+          asset="BYB-Backpack-${VERSION_NAME}-${VERSION_CODE}.apk"
           cp app/build/outputs/apk/release/app-release.apk "$asset"
           echo "ASSET=$asset" >> "$GITHUB_ENV"
           build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           "$build_tools/apksigner" verify --print-certs "$asset" | tee signer.txt
           {
-            echo "### BYB Remote test APK"
+            echo "### BYB Backpack test APK"
             echo
             echo "- Version: \`$VERSION_NAME ($VERSION_CODE)\`"
             echo "- File: \`$asset\`"
@@ -117,7 +117,7 @@ jobs:
       - name: Upload APK as run artifact
         uses: actions/upload-artifact@v7
         with:
-          name: byb-remote-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          name: byb-backpack-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
           path: ${{ env.ASSET }}
           retention-days: 30
           if-no-files-found: error
@@ -140,7 +140,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --prerelease \
-            --title "BYB Remote test build ${VERSION_NAME} (${VERSION_CODE})" \
+            --title "BYB Backpack test build ${VERSION_NAME} (${VERSION_CODE})" \
             --notes "$body"
 
       - name: Clean up Android upload key

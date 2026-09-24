@@ -1,4 +1,4 @@
-package com.backyardbrains.bybremote.utils;
+package com.backyardbrains.bybbackpack.utils;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
