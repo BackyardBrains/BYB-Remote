@@ -1,0 +1,20 @@
+<resources>
+
+    <style name="AppTheme"
+        parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="AppTheme.WhiteAccent">
+        <item name="colorAccent">@android:color/white</item>
+    </style>
+
+    <style name="TitleBarTextAppearance"
+        parent="android:TextAppearance">
+        <item name="android:background">@android:color/holo_red_dark</item>
+        <item name="android:fontFamily">@font/comic_book</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+</resources>
