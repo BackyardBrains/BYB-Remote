@@ -29,7 +29,8 @@ adb shell am start -W -n "$PKG/.MainActivity"
 shot 1-first-launch
 
 # 2. Relaunch with the permission granted: what the user sees after tapping Allow.
-adb shell am force-stop "$PKG"
+#    -S stops the app first; NEW_TASK|CLEAR_TASK drops the leftover permission dialog from step 1,
+#    which would otherwise swallow the launch.
 if [ "$sdk" -ge 31 ]; then
   perms="android.permission.BLUETOOTH_SCAN android.permission.BLUETOOTH_CONNECT"
 else
@@ -38,8 +39,13 @@ fi
 for p in $perms; do
   adb shell pm grant "$PKG" "$p"
 done
-adb shell am start -W -n "$PKG/.MainActivity"
+adb shell am start -W -S -f 0x10008000 -n "$PKG/.MainActivity"
 shot 2-permission-granted
+if ! adb shell pidof "$PKG" > /dev/null; then
+  adb logcat -d > "$OUT/logcat.txt"
+  echo "::error::BYB Remote is not running after a launch with permission granted (API $sdk)"
+  exit 1
+fi
 
 # 3. Landscape layout.
 adb shell settings put system accelerometer_rotation 0
