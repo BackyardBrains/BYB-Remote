@@ -69,7 +69,7 @@
                 android:src="@drawable/board_connected"
                 android:visibility="invisible"/>
 
-            <!-- RoboRoach skin (Settings): the 1.x pictures. -->
+            <!-- Retro mode (Settings): the 1.x pictures. -->
             <ImageView
                 android:id="@+id/imageRoach"
                 android:layout_width="120dp"
@@ -221,11 +221,11 @@
                 android:layout_height="wrap_content">
 
                 <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/swRoboRoachSkin"
+                    android:id="@+id/swRetroMode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_margin="10dp"
-                    android:text="@string/label_roboroach_skin"
+                    android:text="@string/label_retro_mode"
                     android:textAppearance="?android:attr/textAppearanceSmall"/>
             </TableRow>
 

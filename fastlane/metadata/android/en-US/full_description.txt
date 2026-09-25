@@ -2,7 +2,7 @@ Do you have a project that requires TTL signals? Are you tired of having to plug
 
 Using this app and the BYB Backpack, our lightweight, portable two-channel Bluetooth signal generator, you can remotely enable TTL signals! Simply connect to the standard 0.1" header, and you can control two independent square-wave pulse trains with a swipe of your finger on your phone. The BYB Backpack is a great addition to your electronics workbench!
 
-Using this app, you choose the type of signal to generate: frequency, pulse width, duration, gain, and a random mode. Prefer the classic look? Turn on the RoboRoach skin in Settings.
+Using this app, you choose the type of signal to generate: frequency, pulse width, duration, gain, and a random mode.
 
 Note: you need the BYB Backpack hardware from Backyard Brains to use this app.
 

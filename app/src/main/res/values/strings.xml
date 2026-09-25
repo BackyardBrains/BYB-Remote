@@ -33,7 +33,7 @@
     <string name="label_random_mode">Random Mode</string>
     <string name="label_frequency">Frequency</string>
     <string name="label_pulse_width">Pulse Width</string>
-    <string name="label_roboroach_skin">RoboRoach skin</string>
+    <string name="label_retro_mode">Retro mode</string>
     <string name="action_ok">OK</string>
 
 </resources>
