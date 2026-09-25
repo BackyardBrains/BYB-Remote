@@ -34,5 +34,6 @@ A real signal generator is needed to test anything past the scan; emulators have
 | Test builds and store releases | [`docs/RELEASING.md`](docs/RELEASING.md) |
 | Bluetooth protocol (fixed by firmware) | [`docs/PROTOCOL.md`](docs/PROTOCOL.md) |
 | CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint, unit tests, debug + release builds, launch smoke test on Android 11 and 16 emulators |
+| Merging | [`.github/workflows/auto-merge.yml`](.github/workflows/auto-merge.yml): once CI passes, Jev decides; routine PRs merge themselves, the rest get `needs-review` |
 
 Bugs: open an issue with the bug report form. Testers retest with a real signal generator.
