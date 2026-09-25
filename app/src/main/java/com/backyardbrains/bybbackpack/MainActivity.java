@@ -140,12 +140,16 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         setSupportActionBar(viewHolder.toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayShowTitleEnabled(false);
 
+        // Retro mode is a hidden toggle: long-press the "BYB Backpack" title. The choice is remembered.
         final SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         applySkin(prefs.getBoolean(PREF_RETRO_MODE, false));
-        viewHolder.RetroMode.setChecked(mRetroMode);
-        viewHolder.RetroMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean(PREF_RETRO_MODE, isChecked).apply();
-            applySkin(isChecked);
+        viewHolder.title.setOnLongClickListener(v -> {
+            final boolean retro = !mRetroMode;
+            prefs.edit().putBoolean(PREF_RETRO_MODE, retro).apply();
+            applySkin(retro);
+            Toast.makeText(this, retro ? R.string.message_retro_on : R.string.message_retro_off, Toast.LENGTH_SHORT)
+                .show();
+            return true;
         });
         viewHolder.goLeftText.setVisibility(View.INVISIBLE);
         viewHolder.goRightText.setVisibility(View.INVISIBLE);
@@ -632,6 +636,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         View root;
         View appBar;
         Toolbar toolbar;
+        TextView title;
         ViewFlipper flipper;
 
         TextView goLeftText;
@@ -647,13 +652,13 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         SeekBar PulseWidth;
         SeekBar Gain;
         SwitchCompat RandomMode;
-        SwitchCompat RetroMode;
 
         // Binds UI elements to local variables
         void bind(@NonNull Activity activity) {
             root = activity.findViewById(R.id.root);
             appBar = activity.findViewById(R.id.appBar);
             toolbar = activity.findViewById(R.id.toolbar);
+            title = activity.findViewById(R.id.toolbarTitle);
             flipper = activity.findViewById(R.id.viewFlipper);
             boardImage = activity.findViewById(R.id.imageBoard);
             boardConnectedImage = activity.findViewById(R.id.imageBoardConnected);
@@ -667,7 +672,6 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             Frequecy = activity.findViewById(R.id.sbFrequency);
             PulseWidth = activity.findViewById(R.id.sbPulseWidth);
             RandomMode = activity.findViewById(R.id.swRandomMode);
-            RetroMode = activity.findViewById(R.id.swRetroMode);
         }
     }
 
