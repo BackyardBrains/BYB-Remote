@@ -1,13 +1,9 @@
-BYB Backpack controls the Backyard Brains Bluetooth backpack, a tiny signal generator, from your phone.
+Do you have a project that requires TTL signals? Are you tired of having to plug in your function generator? Would you like to remotely enable your project? Well... you are in luck! Backyard Brains has your back.
 
-Tap "Find Signal Generator" and the app connects to the nearest one. Swipe left or right to send a pulse train on either output channel, and open Settings to shape the signal:
+Using this app and our lightweight, portable two-channel Bluetooth signal generator, you can remotely enable TTL signals! Simply connect to the standard 0.1" header, and you can control two independent square-wave pulse trains with a swipe of your finger on your phone. The Backyard Brains remote signal generator is a great addition to your electronics workbench!
 
-• Frequency: how many pulses per second
-• Pulse width: how long each pulse lasts
-• Duration: how long each burst runs
-• Gain: output level
-• Random mode: randomized stimulus timing
+Using this app, you choose the type of signal to generate: frequency, pulse width, duration, gain, and a random mode. Prefer the classic look? Turn on the RoboRoach skin in Settings.
 
-The signal generator is a tiny, battery-powered, two-channel square-wave generator for classroom and bench experiments. BYB Backpack needs Bluetooth, and on Android 11 and older it also needs Location switched on so the phone can see nearby Bluetooth devices. The app does not collect or share any personal data.
+Note: you need the Backyard Brains signal generator hardware (the RoboRoach backpack) to use this app. https://backyardbrains.com/products/roboroach
 
-Made by Backyard Brains, neuroscience for everyone.
+BYB Backpack uses Bluetooth. On Android 11 and older it also needs Location turned on so your phone can find nearby Bluetooth devices. The app does not collect or share any personal data.

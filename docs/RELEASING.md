@@ -42,6 +42,11 @@ Keep "Google-generated app signing key" (Play App Signing). The key that signed 
 becomes the app's upload key. `build_only` never contacts Play, so it also works before the
 service-account secret exists.
 
+**While the app is a draft:** until BYB Backpack's first release goes live in Play Console, Play
+calls it a "draft app" and only accepts API releases with `release_status: draft`. Run the
+workflow with `draft`, then roll the release out from Play Console. After the first release is
+live, `completed` works.
+
 The listing text and icon come from `fastlane/metadata/android/en-US/`. `changelogs/default.txt`
 becomes the "What's new" text for every upload, so update it for each production release.
 

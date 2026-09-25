@@ -1,1 +1,1 @@
-Bluetooth remote control for the Backyard Brains signal generator.
+Swipe to send TTL pulses from the Backyard Brains Bluetooth signal generator.
