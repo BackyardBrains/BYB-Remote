@@ -3,10 +3,17 @@ name: Release - Google Play
 # One pipeline for every Play track. Dispatch-only, main-only, and a dry run by default:
 # nothing reaches Google Play unless someone dispatches it with dry_run=false.
 # internal = test build for testers (always OK). production = Greg's call only (docs/RELEASING.md).
+# build_only = make the signed AAB as a run artifact and stop (the first upload of a new Play app
+# has to be done by hand in Play Console; this also works before the Play API key exists).
 
 on:
   workflow_dispatch:
     inputs:
+      build_only:
+        description: "Only build the signed AAB as a run artifact; do not contact Google Play."
+        type: boolean
+        required: true
+        default: false
       track:
         description: "Destination Play track."
         type: choice
@@ -75,10 +82,15 @@ jobs:
           ROLLOUT: ${{ inputs.rollout }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           PROMOTE_FROM: ${{ inputs.promote_from }}
+          BUILD_ONLY: ${{ inputs.build_only }}
         run: |
           set -euo pipefail
           if [ "$WORKFLOW_REF" != "refs/heads/main" ]; then
             echo "::error::Store releases come from main only; received $WORKFLOW_REF"
+            exit 1
+          fi
+          if [ "$BUILD_ONLY" = "true" ] && [ "$PROMOTE_FROM" != "none" ]; then
+            echo "::error::build_only builds a new AAB; leave promote_from at none."
             exit 1
           fi
           if [ "$PROMOTE_FROM" = "$TRACK" ]; then
@@ -93,7 +105,7 @@ jobs:
             echo "::error::rollout requires release_status=inProgress."
             exit 1
           fi
-          if [ "$DRY_RUN" != "true" ] && [ "$TRACK" = "production" ]; then
+          if [ "$DRY_RUN" != "true" ] && [ "$TRACK" = "production" ] && [ "$BUILD_ONLY" != "true" ]; then
             echo "::warning::Real production release. Confirm the Play listing, data safety form and content rating are current."
           fi
 
@@ -103,11 +115,13 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Ruby
+        if: ${{ !inputs.build_only }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
 
       - name: Install fastlane
+        if: ${{ !inputs.build_only }}
         run: gem install fastlane -v "$FASTLANE_VERSION" --no-document
 
       - name: Compute version
@@ -178,6 +192,7 @@ jobs:
           if-no-files-found: error
 
       - name: fastlane supply to Google Play
+        if: ${{ !inputs.build_only }}
         env:
           SUPPLY_JSON_KEY_DATA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           TRACK: ${{ inputs.track }}

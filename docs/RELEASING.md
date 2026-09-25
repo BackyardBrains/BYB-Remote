@@ -35,6 +35,13 @@ Run **Release - Google Play**:
   production).
 - `production` with `rollout=0.1` and `release_status=inProgress` does a staged rollout.
 
+**First upload of a new app:** Play only accepts the very first bundle through Play Console. Run
+**Release - Google Play** with `build_only` checked, download the `byb-backpack-aab-…` artifact,
+and upload `app-release.aab` in Play Console under Testing → Internal testing → Create release.
+Keep "Google-generated app signing key" (Play App Signing). The key that signed this bundle
+becomes the app's upload key. `build_only` never contacts Play, so it also works before the
+service-account secret exists.
+
 The listing text and icon come from `fastlane/metadata/android/en-US/`. `changelogs/default.txt`
 becomes the "What's new" text for every upload, so update it for each production release.
 
