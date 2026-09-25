@@ -47,6 +47,10 @@ calls it a "draft app" and only accepts API releases with `release_status: draft
 workflow with `draft`, then roll the release out from Play Console. After the first release is
 live, `completed` works.
 
+**Listing only:** run **Release - Google Play** with `listing_only` checked and `dry_run`
+unchecked to push just the store text and icon from `fastlane/metadata/android/en-US/`, with no
+build and no release. `dry_run` alone only asks Play to check the listing and saves nothing.
+
 The listing text and icon come from `fastlane/metadata/android/en-US/`. `changelogs/default.txt`
 becomes the "What's new" text for every upload, so update it for each production release.
 
