@@ -14,9 +14,9 @@ needs them.
    Google Play app. (The old `com.backyardbrains.bybremote` Play listing is tied to a signing key
    we no longer have, so it is not used.)
 3. **The app is BYB Backpack** (the iOS counterpart is called BYB Remote). The default look is
-   the board picture and "Find Signal Generator". The classic RoboRoach skin (roach and backpack
+   the board picture and "Find Signal Generator". **Retro mode** (the 1.x roach and backpack
    pictures, "Find RoboRoach") is a switch in Settings, off by default and remembered between
-   launches. Protocol names (for example `ROBOROACH_FREQUENCY` and the advertised device name) stay
+   launches. The store listing does not mention Retro mode. Protocol names (for example `ROBOROACH_FREQUENCY` and the advertised device name) stay
    as the firmware defines them.
 4. **`targetSdk` meets Google Play's current requirement** (API 36 since 2026-08-31; Google raises
    it every August). Raising it is its own PR with emulator smoke screenshots checked.

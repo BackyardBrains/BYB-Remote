@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
     private static final int SCREEN_SETTINGS = 1;
 
     private static final String PREFS = "byb_remote";
-    private static final String PREF_ROBOROACH_SKIN = "roboroach_skin";
+    private static final String PREF_RETRO_MODE = "retro_mode";
 
     boolean mScanning = false;
     boolean mTurning = false;
@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
     private OnBackPressedCallback mSettingsBackCallback;
 
     /* the pictures for the current skin: always-on base, and the overlay that lights up when connected */
-    private boolean mRoboRoachSkin = false;
+    private boolean mRetroMode = false;
     private ImageView mBaseImage;
     private ImageView mConnectedImage;
 
@@ -141,10 +141,10 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayShowTitleEnabled(false);
 
         final SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        applySkin(prefs.getBoolean(PREF_ROBOROACH_SKIN, false));
-        viewHolder.RoboRoachSkin.setChecked(mRoboRoachSkin);
-        viewHolder.RoboRoachSkin.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean(PREF_ROBOROACH_SKIN, isChecked).apply();
+        applySkin(prefs.getBoolean(PREF_RETRO_MODE, false));
+        viewHolder.RetroMode.setChecked(mRetroMode);
+        viewHolder.RetroMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(PREF_RETRO_MODE, isChecked).apply();
             applySkin(isChecked);
         });
         viewHolder.goLeftText.setVisibility(View.INVISIBLE);
@@ -303,7 +303,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
 
     @Override public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
-        menu.findItem(R.id.menu_scan).setTitle(mRoboRoachSkin ? R.string.menu_scan_roboroach : R.string.menu_scan);
+        menu.findItem(R.id.menu_scan).setTitle(mRetroMode ? R.string.menu_scan_roboroach : R.string.menu_scan);
         if (mRemoteManager.isConnected()) {
             menu.findItem(R.id.menu_stop).setVisible(false);
             menu.findItem(R.id.menu_scan).setVisible(false);
@@ -516,14 +516,14 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         viewHolder.PulseWidth.setEnabled(connected && !random);
     }
 
-    /* BYB Backpack board (default) or the classic RoboRoach pictures; keeps the current connection look */
-    private void applySkin(boolean roboRoach) {
+    /* BYB Backpack board (default) or Retro mode (the 1.x roach pictures); keeps the current connection look */
+    private void applySkin(boolean retro) {
         final ImageView oldOverlay = mConnectedImage;
-        mRoboRoachSkin = roboRoach;
-        mBaseImage = roboRoach ? viewHolder.roachImage : viewHolder.boardImage;
-        mConnectedImage = roboRoach ? viewHolder.backpackImage : viewHolder.boardConnectedImage;
-        final ImageView otherBase = roboRoach ? viewHolder.boardImage : viewHolder.roachImage;
-        final ImageView otherOverlay = roboRoach ? viewHolder.boardConnectedImage : viewHolder.backpackImage;
+        mRetroMode = retro;
+        mBaseImage = retro ? viewHolder.roachImage : viewHolder.boardImage;
+        mConnectedImage = retro ? viewHolder.backpackImage : viewHolder.boardConnectedImage;
+        final ImageView otherBase = retro ? viewHolder.boardImage : viewHolder.roachImage;
+        final ImageView otherOverlay = retro ? viewHolder.boardConnectedImage : viewHolder.backpackImage;
 
         mBaseImage.setVisibility(View.VISIBLE);
         otherBase.setVisibility(View.GONE);
@@ -647,7 +647,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
         SeekBar PulseWidth;
         SeekBar Gain;
         SwitchCompat RandomMode;
-        SwitchCompat RoboRoachSkin;
+        SwitchCompat RetroMode;
 
         // Binds UI elements to local variables
         void bind(@NonNull Activity activity) {
@@ -667,7 +667,7 @@ public class MainActivity extends AppCompatActivity implements RemoteManagerCall
             Frequecy = activity.findViewById(R.id.sbFrequency);
             PulseWidth = activity.findViewById(R.id.sbPulseWidth);
             RandomMode = activity.findViewById(R.id.swRandomMode);
-            RoboRoachSkin = activity.findViewById(R.id.swRoboRoachSkin);
+            RetroMode = activity.findViewById(R.id.swRetroMode);
         }
     }
 

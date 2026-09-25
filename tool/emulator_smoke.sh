@@ -66,15 +66,15 @@ if ! adb shell pidof "$PKG" > /dev/null; then
   exit 1
 fi
 
-# 3. Settings are reachable before connecting; turn on the RoboRoach skin and go back.
+# 3. Settings are reachable before connecting; turn on Retro mode and go back.
 tap_node 'text="Settings"' || { tap_node 'content-desc="More options"' && tap_node 'text="Settings"'; } \
   || { echo "::error::Could not open Settings (API $sdk)"; exit 1; }
 shot 3-settings
-tap_node 'text="RoboRoach skin"' || { echo "::error::No RoboRoach skin switch in Settings (API $sdk)"; exit 1; }
+tap_node 'text="Retro mode"' || { echo "::error::No Retro mode switch in Settings (API $sdk)"; exit 1; }
 adb shell input keyevent KEYCODE_BACK
-shot 4-roboroach-skin
+shot 4-retro-mode
 
-# 5. Landscape layout (RoboRoach skin is still on: the choice is saved).
+# 5. Landscape layout (Retro mode is still on: the choice is saved).
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
 shot 5-landscape
