@@ -51,6 +51,11 @@ becomes the "What's new" text for every upload, so update it for each production
 
 ## One-time setup
 
+**Upload key:** run `bash tool/create_upload_key.sh` once in Terminal. It creates BYB Backpack's
+upload key, loads the four `ANDROID_*` secrets below into the release environment without printing
+them, and leaves a backup folder on the Desktop. Put that folder in 1Password, then delete it from
+the Desktop. It refuses to replace a key that is already loaded.
+
 These secrets go in the **`release` environment** (Settings → Environments → release), never in
 files or repo-level secrets. That environment only accepts runs from `main`, so a workflow edited on
 another branch cannot read them:
