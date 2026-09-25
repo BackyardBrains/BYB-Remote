@@ -1,0 +1,80 @@
+name: Auto-merge (Jev)
+
+# After CI passes on a pull request, tool/automerge_gate.mjs decides whether to merge it:
+# code checks the hard rules, Jev (TypeSafe) answers three yes/no questions, code decides.
+# Routine PRs merge themselves; the rest get the needs-review label and a comment with the scores.
+# Add the `hold` label to keep a PR open. This runs the gate from main and reads the PR only
+# through the GitHub API; it never checks out or runs the PR's code.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to (re)evaluate."
+        type: number
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: auto-merge-${{ github.event.workflow_run.head_sha || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: jev-gate
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main (the gate, never the PR)
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Find the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_PR: ${{ inputs.pr }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCH_PR:-}" ]; then
+            echo "number=$DISPATCH_PR" >> "$GITHUB_OUTPUT"
+            echo "sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          prs="$(gh pr list -R "$GITHUB_REPOSITORY" --state open --head "$HEAD_BRANCH" --json number,headRefOid)"
+          number="$(jq -r --arg sha "$HEAD_SHA" '[.[] | select(.headRefOid == $sha) | .number][0] // empty' <<< "$prs")"
+          if [ -z "$number" ]; then
+            echo "No open pull request has head $HEAD_SHA; nothing to do."
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Jev decides
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$HEAD_SHA" ]; then
+            node tool/automerge_gate.mjs --pr "$PR_NUMBER" --sha "$HEAD_SHA"
+          else
+            node tool/automerge_gate.mjs --pr "$PR_NUMBER"
+          fi
