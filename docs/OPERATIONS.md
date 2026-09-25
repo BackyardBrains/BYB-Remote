@@ -17,7 +17,7 @@ reviewer are the gate.
   questions: would a careful maintainer approve it; does it change the Bluetooth protocol, weaken
   tests or CI, add a secret, or change the app ID; does the diff match the description. It merges
   when approve ≥ 0.7, danger ≤ 0.2 and matches ≥ 0.6. Otherwise it labels the PR `needs-review`
-  and comments with the scores. PRs that change the gate or `CLAUDE.md` always go to review. If
+  and comments with the scores. PRs that change a workflow, the gate or `CLAUDE.md`, or whose diff is too big for Jev to see whole, always go to review. If
   Jev is unreachable, nothing merges. To re-run the gate, start the workflow by hand with the PR
   number. Calibration on 2026-09-24: routine PRs scored approve 0.75–0.93 and danger ≤ 0.07;
   synthetic bad PRs (UUID change, deleted emulator tests, hidden app-ID change, hard-coded

@@ -38,9 +38,10 @@ needs them.
   emulator smoke checks.
 - **Jev decides merges** (Greg, 2026-09-24: "Auto merge. I don't want to babysit. Use Jev to
   decide"). When CI passes, `.github/workflows/auto-merge.yml` runs `tool/automerge_gate.mjs`.
-  Routine PRs merge themselves. Anything Jev doubts, or anything that touches the gate or this
-  file, gets the `needs-review` label and a comment with the scores. Add `hold` to keep a PR open.
-  Don't merge by hand around the gate, except for `needs-review` PRs someone has actually checked.
+  Routine PRs merge themselves. Anything Jev doubts, anything that touches a workflow, the gate
+  or this file, and any diff too big for Jev to see whole gets the `needs-review` label and a
+  comment with the scores. Add `hold` to keep a PR open. Don't merge by hand around the gate,
+  except for `needs-review` PRs someone has actually checked.
 - Anything that needs a real signal generator or phone goes to the testers as a
   `needs-verification` issue with numbered plain-English steps. Never to Greg.
 

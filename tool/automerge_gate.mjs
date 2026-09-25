@@ -18,9 +18,10 @@ import { execFileSync } from 'node:child_process';
 const REPO = process.env.GITHUB_REPOSITORY || 'BackyardBrains/RoboRoach-Android-App';
 const MAX_DIFF_CHARS = 60000;
 
-// PRs that change the gate or the repo rules never merge on their own: otherwise an innocent-looking
-// PR could weaken the rules that every later PR is judged by.
-const PROTECTED = [/^\.github\/workflows\/auto-merge\.yml$/, /^tool\/automerge_gate\.mjs$/, /^CLAUDE\.md$/];
+// PRs that change a workflow, the gate, or the repo rules never merge on their own: workflows can
+// hold write tokens and secrets, and an innocent-looking PR could weaken the rules every later PR
+// is judged by.
+const PROTECTED = [/^\.github\/workflows\//, /^tool\/automerge_gate\.mjs$/, /^CLAUDE\.md$/];
 const THRESHOLDS = { approveMin: 0.7, dangerMax: 0.2, matchesMin: 0.6 };
 
 const REPO_RULES = [
@@ -150,7 +151,7 @@ async function main() {
     console.log(`Jev unavailable: ${e.message}`);
     if (!args.dryRun) {
       gh('pr', 'edit', String(pr.number), '-R', REPO, '--add-label', 'needs-review');
-      comment(pr.number, `Auto-merge gate: Jev could not be reached, so this was not merged (the gate fails closed). Re-run the "Auto-merge (Jev)" workflow or merge by hand.\n\n\`${e.message.slice(0, 200)}\``);
+      comment(pr.number, `Auto-merge gate: Jev could not be reached or gave no usable answer, so this was not merged (the gate fails closed). Re-run the "Auto-merge (Jev)" workflow or merge by hand.\n\n\`${e.message.slice(0, 200)}\``);
     }
     process.exitCode = args.dryRun ? 1 : 0;
     return;
@@ -158,7 +159,8 @@ async function main() {
 
   const sc = { approve: answers.approve.noul, danger: answers.danger.noul, matches: answers.matches.noul };
   const reasons = [];
-  if (protectedTouched.length) reasons.push(`it changes the merge gate or the repo rules (${protectedTouched.join(', ')}), which always needs a person`);
+  if (protectedTouched.length) reasons.push(`it changes a workflow, the merge gate, or the repo rules (${protectedTouched.join(', ')}), which always needs a review`);
+  if (truncated) reasons.push(`the diff is longer than ${MAX_DIFF_CHARS} characters, too big for Jev to see in full`);
   if (sc.danger > THRESHOLDS.dangerMax) reasons.push(`Jev sees a dangerous change (${sc.danger.toFixed(2)} > ${THRESHOLDS.dangerMax}): Bluetooth protocol, tests/CI weakened, a secret, or the app ID`);
   if (sc.approve < THRESHOLDS.approveMin) reasons.push(`Jev's approval ${sc.approve.toFixed(2)} is below ${THRESHOLDS.approveMin}`);
   if (sc.matches < THRESHOLDS.matchesMin) reasons.push(`the diff may not match the description (${sc.matches.toFixed(2)} < ${THRESHOLDS.matchesMin})`);
@@ -170,11 +172,33 @@ async function main() {
   if (args.dryRun) return;
 
   if (merge) {
-    comment(pr.number, `Auto-merge gate: merging.\n\n${table}${sensLine}`);
-    gh('pr', 'merge', String(pr.number), '-R', REPO, '--squash', '--delete-branch',
-      '--match-head-commit', pr.headRefOid, '--subject', `${pr.title} (#${pr.number})`);
+    // Re-check what can change while Jev thinks: a hold label, draft/open state, new commits.
+    const now = JSON.parse(gh('pr', 'view', String(pr.number), '-R', REPO, '--json', 'state,isDraft,labels,headRefOid'));
+    const late = [];
+    if (now.state !== 'OPEN') late.push(`it is now ${now.state.toLowerCase()}`);
+    if (now.isDraft) late.push('it was turned into a draft');
+    if (now.labels.some((l) => l.name === 'hold')) late.push('the hold label was added');
+    if (now.headRefOid !== pr.headRefOid) late.push('new commits arrived');
+    if (late.length) {
+      console.log(`Not merging #${pr.number} after all: ${late.join('; ')}.`);
+      return;
+    }
+    try {
+      gh('pr', 'merge', String(pr.number), '-R', REPO, '--squash', '--delete-branch',
+        '--match-head-commit', pr.headRefOid, '--subject', `${pr.title} (#${pr.number})`);
+    } catch (e) {
+      gh('pr', 'edit', String(pr.number), '-R', REPO, '--add-label', 'needs-review');
+      comment(pr.number, `Auto-merge gate: Jev approved this, but the merge itself failed, so it is still open.\n\n${table}\n\n\`${String(e.message).slice(0, 300)}\``);
+      process.exitCode = 1;
+      return;
+    }
+    comment(pr.number, `Auto-merge gate: merged.\n\n${table}${sensLine}`);
     // Merges made with the workflow token don't trigger push workflows, so start CI on main explicitly.
-    gh('workflow', 'run', 'ci.yml', '-R', REPO, '--ref', 'main');
+    try {
+      gh('workflow', 'run', 'ci.yml', '-R', REPO, '--ref', 'main');
+    } catch (e) {
+      console.log(`::warning::Merged, but could not start CI on main: ${e.message}`);
+    }
   } else {
     gh('pr', 'edit', String(pr.number), '-R', REPO, '--add-label', 'needs-review');
     comment(pr.number, `Auto-merge gate: not merging, because ${reasons.join('; ')}. A person or an agent session should look at this; merge by hand when it's right.\n\n${table}${sensLine}`);
