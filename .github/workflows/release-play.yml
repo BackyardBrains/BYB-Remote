@@ -126,13 +126,13 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Ruby
-        if: ${{ !inputs.build_only }}
+        if: ${{ !inputs.build_only && !inputs.listing_only }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
 
       - name: Install fastlane
-        if: ${{ !inputs.build_only }}
+        if: ${{ !inputs.build_only && !inputs.listing_only }}
         run: gem install fastlane -v "$FASTLANE_VERSION" --no-document
 
       - name: Compute version
@@ -202,8 +202,21 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+      - name: Upload the store listing (text + icon)
+        if: ${{ inputs.listing_only }}
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            node tool/play_listing.mjs --dry-run
+          else
+            node tool/play_listing.mjs
+          fi
+
       - name: fastlane supply to Google Play
-        if: ${{ !inputs.build_only }}
+        if: ${{ !inputs.build_only && !inputs.listing_only }}
         env:
           SUPPLY_JSON_KEY_DATA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           TRACK: ${{ inputs.track }}
@@ -211,7 +224,6 @@ jobs:
           ROLLOUT: ${{ inputs.rollout }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           PROMOTE_FROM: ${{ inputs.promote_from }}
-          LISTING_ONLY: ${{ inputs.listing_only }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
@@ -224,16 +236,14 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--validate_only true)
           fi
-          if [ "$LISTING_ONLY" = "true" ]; then
-            args+=(--skip_upload_aab true --skip_upload_apk true --skip_upload_changelogs true)
-          elif [ "$PROMOTE_FROM" != "none" ]; then
+          if [ "$PROMOTE_FROM" != "none" ]; then
             args+=(--track "$PROMOTE_FROM" --track_promote_to "$TRACK"
                    --track_promote_release_status "$RELEASE_STATUS" --skip_upload_changelogs true)
           else
             args+=(--track "$TRACK" --aab app/build/outputs/bundle/release/app-release.aab
                    --version_name "$VERSION_NAME" --release_status "$RELEASE_STATUS")
           fi
-          if [ -n "$ROLLOUT" ] && [ "$LISTING_ONLY" != "true" ]; then
+          if [ -n "$ROLLOUT" ]; then
             args+=(--rollout "$ROLLOUT")
           fi
           fastlane "${args[@]}"
@@ -243,9 +253,7 @@ jobs:
             echo "- track: \`$TRACK\`"
             echo "- dry_run: \`$DRY_RUN\`"
             echo "- release_status: \`$RELEASE_STATUS\`"
-            if [ "$LISTING_ONLY" = "true" ]; then
-              echo "- listing only: text and icon from fastlane/metadata/android"
-            elif [ "$PROMOTE_FROM" != "none" ]; then
+            if [ "$PROMOTE_FROM" != "none" ]; then
               echo "- promoted from: \`$PROMOTE_FROM\`"
             else
               echo "- version: \`$VERSION_NAME ($VERSION_CODE)\`"
