@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.backyardbrains.bybbackpack"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 36
         // CI release lanes pass -PversionCode=<100000 + run number>; local builds use 1.
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1

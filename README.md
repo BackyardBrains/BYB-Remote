@@ -11,7 +11,8 @@ The iOS counterpart is called BYB Remote
 
 This repo started from the RoboRoach Android 1.2 source (2018, the first commit here) and was
 rebuilt for current phones: targets Android 16 (API 36, Google Play's requirement), runs on
-Android 6.0 and newer, and uses the modern Bluetooth permissions.
+Android 7.0 and newer (Play automatic protection needs API 24), and uses the modern Bluetooth
+permissions.
 
 ## Build
 
