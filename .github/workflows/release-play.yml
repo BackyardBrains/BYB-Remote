@@ -5,12 +5,18 @@ name: Release - Google Play
 # internal = test build for testers (always OK). production = Greg's call only (docs/RELEASING.md).
 # build_only = make the signed AAB as a run artifact and stop (the first upload of a new Play app
 # has to be done by hand in Play Console; this also works before the Play API key exists).
+# listing_only = upload only the store listing (text + icon from fastlane/metadata); no build, no release.
 
 on:
   workflow_dispatch:
     inputs:
       build_only:
         description: "Only build the signed AAB as a run artifact; do not contact Google Play."
+        type: boolean
+        required: true
+        default: false
+      listing_only:
+        description: "Only upload the store listing (text + icon); no build and no release."
         type: boolean
         required: true
         default: false
@@ -83,10 +89,15 @@ jobs:
           RELEASE_STATUS: ${{ inputs.release_status }}
           PROMOTE_FROM: ${{ inputs.promote_from }}
           BUILD_ONLY: ${{ inputs.build_only }}
+          LISTING_ONLY: ${{ inputs.listing_only }}
         run: |
           set -euo pipefail
           if [ "$WORKFLOW_REF" != "refs/heads/main" ]; then
             echo "::error::Store releases come from main only; received $WORKFLOW_REF"
+            exit 1
+          fi
+          if [ "$LISTING_ONLY" = "true" ] && { [ "$BUILD_ONLY" = "true" ] || [ "$PROMOTE_FROM" != "none" ]; }; then
+            echo "::error::listing_only uploads only the listing; leave build_only off and promote_from at none."
             exit 1
           fi
           if [ "$BUILD_ONLY" = "true" ] && [ "$PROMOTE_FROM" != "none" ]; then
@@ -126,7 +137,7 @@ jobs:
 
       - name: Compute version
         id: version
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         run: |
           set -euo pipefail
           code="$(bash tool/version_code.sh)"
@@ -136,22 +147,22 @@ jobs:
           echo "BYB Backpack $name ($code)"
 
       - name: Validate Gradle wrapper checksum
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         uses: gradle/actions/wrapper-validation@v6
 
       - name: Set up JDK 17
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         uses: gradle/actions/setup-gradle@v6
 
       - name: Decode Android upload key
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -171,7 +182,7 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
 
       - name: Build signed release AAB
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -183,7 +194,7 @@ jobs:
           test -s app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload AAB artifact
-        if: inputs.promote_from == 'none'
+        if: inputs.promote_from == 'none' && !inputs.listing_only
         uses: actions/upload-artifact@v7
         with:
           name: byb-backpack-aab-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
@@ -200,6 +211,7 @@ jobs:
           ROLLOUT: ${{ inputs.rollout }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           PROMOTE_FROM: ${{ inputs.promote_from }}
+          LISTING_ONLY: ${{ inputs.listing_only }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
@@ -212,14 +224,16 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--validate_only true)
           fi
-          if [ "$PROMOTE_FROM" != "none" ]; then
+          if [ "$LISTING_ONLY" = "true" ]; then
+            args+=(--skip_upload_aab true --skip_upload_apk true --skip_upload_changelogs true)
+          elif [ "$PROMOTE_FROM" != "none" ]; then
             args+=(--track "$PROMOTE_FROM" --track_promote_to "$TRACK"
                    --track_promote_release_status "$RELEASE_STATUS" --skip_upload_changelogs true)
           else
             args+=(--track "$TRACK" --aab app/build/outputs/bundle/release/app-release.aab
                    --version_name "$VERSION_NAME" --release_status "$RELEASE_STATUS")
           fi
-          if [ -n "$ROLLOUT" ]; then
+          if [ -n "$ROLLOUT" ] && [ "$LISTING_ONLY" != "true" ]; then
             args+=(--rollout "$ROLLOUT")
           fi
           fastlane "${args[@]}"
@@ -229,7 +243,9 @@ jobs:
             echo "- track: \`$TRACK\`"
             echo "- dry_run: \`$DRY_RUN\`"
             echo "- release_status: \`$RELEASE_STATUS\`"
-            if [ "$PROMOTE_FROM" != "none" ]; then
+            if [ "$LISTING_ONLY" = "true" ]; then
+              echo "- listing only: text and icon from fastlane/metadata/android"
+            elif [ "$PROMOTE_FROM" != "none" ]; then
               echo "- promoted from: \`$PROMOTE_FROM\`"
             else
               echo "- version: \`$VERSION_NAME ($VERSION_CODE)\`"
