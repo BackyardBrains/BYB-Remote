@@ -20,8 +20,9 @@ shot() {
 }
 
 # Tap the first on-screen element whose UI-dump node matches $1 (e.g. 'text="Settings"').
+# With HOLD_MS set, press and hold instead (a long-press).
 tap_node() {
-  local node bounds
+  local node bounds x y
   for _ in 1 2 3; do
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
     node="$(adb shell cat /sdcard/ui.xml | tr '>' '\n' | grep -m1 -- "$1" || true)"
@@ -29,7 +30,12 @@ tap_node() {
       bounds="$(echo "$node" | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
       set -- $bounds
       if [ "$#" -ne 4 ]; then sleep 2; continue; fi
-      adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+      x=$(( ($1 + $3) / 2 )); y=$(( ($2 + $4) / 2 ))
+      if [ -n "${HOLD_MS:-}" ]; then
+        adb shell input swipe "$x" "$y" "$x" "$y" "$HOLD_MS"
+      else
+        adb shell input tap "$x" "$y"
+      fi
       sleep 2
       return 0
     fi
@@ -66,13 +72,21 @@ if ! adb shell pidof "$PKG" > /dev/null; then
   exit 1
 fi
 
-# 3. Settings are reachable before connecting; turn on Retro mode and go back.
+# 3. Settings are reachable before connecting.
 tap_node 'text="Settings"' || { tap_node 'content-desc="More options"' && tap_node 'text="Settings"'; } \
   || { echo "::error::Could not open Settings (API $sdk)"; exit 1; }
 shot 3-settings
-tap_node 'text="Retro mode"' || { echo "::error::No Retro mode switch in Settings (API $sdk)"; exit 1; }
 adb shell input keyevent KEYCODE_BACK
+
+# 4. Retro mode is hidden: long-press the "BYB Backpack" title.
+HOLD_MS=1200 tap_node 'text="BYB Backpack"' || { echo "::error::Could not long-press the title (API $sdk)"; exit 1; }
 shot 4-retro-mode
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
+ui="$(adb shell cat /sdcard/ui.xml || true)"
+if ! grep -q -e 'text="Find RoboRoach"' -e 'content-desc="RoboRoach"' <<< "$ui"; then
+  echo "::error::Long-pressing the title did not turn on Retro mode (API $sdk)"
+  exit 1
+fi
 
 # 5. Landscape layout (Retro mode is still on: the choice is saved).
 adb shell settings put system accelerometer_rotation 0

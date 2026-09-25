@@ -26,6 +26,8 @@
     <string name="description_roboroach">RoboRoach</string>
     <string name="rr_goleft">Go Left!</string>
     <string name="rr_goright">Go Right!</string>
+    <string name="message_retro_on">Retro mode on</string>
+    <string name="message_retro_off">Retro mode off</string>
 
     <!-- Settings screen -->
     <string name="label_gain">Gain</string>
@@ -33,7 +35,6 @@
     <string name="label_random_mode">Random Mode</string>
     <string name="label_frequency">Frequency</string>
     <string name="label_pulse_width">Pulse Width</string>
-    <string name="label_retro_mode">Retro mode</string>
     <string name="action_ok">OK</string>
 
 </resources>

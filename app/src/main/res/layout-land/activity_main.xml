@@ -23,7 +23,9 @@
             android:layout_height="?attr/actionBarSize"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
+            <!-- Long-press toggles Retro mode (MainActivity). -->
             <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/toolbarTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:gravity="center"
@@ -69,7 +71,7 @@
                 android:src="@drawable/board_connected"
                 android:visibility="invisible"/>
 
-            <!-- Retro mode (Settings): the 1.x pictures, scaled to 75% to fit landscape. -->
+            <!-- Retro mode (long-press the title): the 1.x pictures, scaled to 75% to fit landscape. -->
             <ImageView
                 android:id="@+id/imageRoach"
                 android:layout_width="90dp"
@@ -225,19 +227,6 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"/>
-                    </TableRow>
-
-                    <TableRow
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <androidx.appcompat.widget.SwitchCompat
-                            android:id="@+id/swRetroMode"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_margin="10dp"
-                            android:text="@string/label_retro_mode"
-                            android:textAppearance="?android:attr/textAppearanceSmall"/>
                     </TableRow>
 
                     <TableRow
