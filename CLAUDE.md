@@ -36,14 +36,18 @@ needs them.
   two sentences a non-programmer understands, or exactly `Nothing to test.`
 - CI must be green before merge. Branch protection on `main` requires the build and both
   emulator smoke checks.
-- Nobody reviews their own work: a different agent or person reviews before merge.
+- **Jev decides merges** (Greg, 2026-09-24: "Auto merge. I don't want to babysit. Use Jev to
+  decide"). When CI passes, `.github/workflows/auto-merge.yml` runs `tool/automerge_gate.mjs`.
+  Routine PRs merge themselves. Anything Jev doubts, or anything that touches the gate or this
+  file, gets the `needs-review` label and a comment with the scores. Add `hold` to keep a PR open.
+  Don't merge by hand around the gate, except for `needs-review` PRs someone has actually checked.
 - Anything that needs a real signal generator or phone goes to the testers as a
   `needs-verification` issue with numbered plain-English steps. Never to Greg.
 
 ## Who decides
 
-- **Always OK, no one to ask:** fixes, reviews, merges with green CI, test builds (sideload APK,
-  Play internal track).
+- **Always OK, no one to ask:** fixes, reviews, merges by the Jev gate, test builds (sideload
+  APK, Play internal track).
 - **Greg only:** production releases (Play production), anything that costs money, anything
   irreversible.
 - Messages to Greg or testers are plain English: what changed and what to try. No commit hashes,
