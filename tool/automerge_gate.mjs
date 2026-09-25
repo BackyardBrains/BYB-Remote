@@ -139,6 +139,13 @@ async function main() {
   let answers;
   try {
     answers = (await askJev(state, questions)).answers;
+    // Fail closed on anything but three real probabilities: a missing score must never read as a pass.
+    for (const id of Object.keys(questions)) {
+      const v = answers?.[id]?.noul;
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1) {
+        throw new Error(`Jev returned no usable answer for "${id}"`);
+      }
+    }
   } catch (e) {
     console.log(`Jev unavailable: ${e.message}`);
     if (!args.dryRun) {
